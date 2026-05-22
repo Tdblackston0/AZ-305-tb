@@ -1,3 +1,9 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "chat.tools.terminal.autoApprove": {
+        "/^Get-ChildItem -Path 'c:\\\\Users\\\\tblackston\\\\OneDrive - Microsoft\\\\Documents\\\\Labs\\\\AZ - 305\\\\agents' -File \\| ForEach-Object \\{ Copy-Item -Path \\$_\\.FullName -Destination \"c:\\\\Users\\\\tblackston\\\\OneDrive - Microsoft\\\\Documents\\\\Labs\\\\AZ - 305\\\\\\.github\\\\agents\\\\\\$\\(\\$_\\.Name\\)\" -Force \\}; Get-ChildItem -Path 'c:\\\\Users\\\\tblackston\\\\OneDrive - Microsoft\\\\Documents\\\\Labs\\\\AZ - 305\\\\skills' -File \\| ForEach-Object \\{ Copy-Item -Path \\$_\\.FullName -Destination \"c:\\\\Users\\\\tblackston\\\\OneDrive - Microsoft\\\\Documents\\\\Labs\\\\AZ - 305\\\\\\.github\\\\skills\\\\\\$\\(\\$_\\.Name\\)\" -Force \\}; Write-Output \"Files copied to \\.github\"; Get-ChildItem -Path 'c:\\\\Users\\\\tblackston\\\\OneDrive - Microsoft\\\\Documents\\\\Labs\\\\AZ - 305\\\\\\.github' -Recurse -Force -File \\| Select-Object Name$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

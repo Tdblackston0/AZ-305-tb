@@ -1,0 +1,1061 @@
+# Azure Monitoring & Observability - AZ-305 Cheat Sheet + Exam Prep
+
+> 📝 **Hands-On Labs:** [Monitoring Labs](./Labs/Azure-Monitoring-Labs.md)
+
+> 🎯 **Senior Cloud Solution Architect View:** AZ-305 does not test whether you can click through the portal. It tests whether you can design a monitoring architecture that balances **operations, security, cost, compliance, and scale**.
+
+---
+
+## 1. Azure Monitor Overview
+
+Azure Monitor is the **unified observability platform** for Azure and hybrid resources. It collects, stores, analyzes, and acts on telemetry from infrastructure, platforms, applications, and security tools.
+
+### Core Monitoring Flow
+
+```text
+Sources -> Collection -> Storage -> Analysis -> Response -> Integration
+```
+
+| Layer | What It Includes |
+|------|-------------------|
+| **Data sources** | Metrics, logs, traces, activity events, resource changes, guest OS telemetry, application telemetry |
+| **Collection** | Azure Monitor Agent (AMA), diagnostic settings, Application Insights SDK/auto-instrumentation, Data Collection Rules (DCRs) |
+| **Data stores** | **Metrics database** and **Log Analytics workspace** |
+| **Consumption** | Metrics Explorer, Logs/KQL, Workbooks, Alerts, Dashboards, APIs, Event Hub integration |
+| **Response** | Action Groups, Logic Apps, Functions, ITSM, webhooks, autoscale |
+
+### Data Sources You Must Know for AZ-305
+
+- **Metrics** -> numeric, time-series, near real-time, lightweight, ideal for alerting
+- **Logs** -> rich, queryable, retained longer, ideal for investigations and analytics
+- **Traces** -> distributed application flow and dependency correlation
+- **Changes** -> configuration drift, activity log, update tracking, resource changes
+
+### Two Data Stores = Core Exam Fact
+
+| Store | Best For | Example |
+|------|----------|---------|
+| **Metrics database** | Fast numeric time-series analysis and near real-time alerting | CPU %, DTU %, request count |
+| **Log Analytics workspace** | Deep analysis, correlation, retention, KQL | VM heartbeat, AzureActivity, AppRequests, SecurityEvent |
+
+### Analyze, Visualize, Respond, Integrate
+
+- **Analyze**: KQL, Metrics Explorer, Application Map, Transaction Search
+- **Visualize**: Workbooks, dashboards, Azure portal views, Grafana integration
+- **Respond**: alerts, autoscale, ITSM tickets, webhooks, Functions, Logic Apps
+- **Integrate**: Event Hub, Storage, partner SIEM/APM, REST APIs, Power BI, Sentinel
+
+### Azure Monitor vs Third-Party Tools
+
+| Choose | When |
+|-------|------|
+| **Azure Monitor first** | Azure-native workloads, RBAC integration, Azure Policy enforcement, lower operational friction, unified control plane |
+| **Third-party observability** | Strong multi-cloud requirement, existing enterprise standard, advanced APM/network analytics already standardized outside Azure |
+| **Combined model** | Azure Monitor for collection/governance + third-party tool for enterprise correlation or executive reporting |
+
+> 💡 **AZ-305 heuristic:** If the scenario emphasizes **Azure-native governance, Policy, RBAC, low-friction integration, and PaaS monitoring**, choose Azure Monitor first.
+
+### Starter Commands
+
+```bash
+az monitor log-analytics workspace create \
+  --resource-group rg-monitoring \
+  --workspace-name law-prod-eastus \
+  --location eastus
+```
+
+```powershell
+New-AzOperationalInsightsWorkspace `
+  -ResourceGroupName "rg-monitoring" `
+  -Name "law-prod-eastus" `
+  -Location "EastUS" `
+  -Sku "PerGB2018"
+```
+
+---
+
+## 2. Metrics
+
+Metrics are **numeric time-series values** stored in the Azure Monitor metrics database.
+
+### Platform Metrics vs Custom Metrics
+
+| Type | Source | Example | Best Use |
+|------|--------|---------|----------|
+| **Platform metrics** | Emitted automatically by Azure resources | CPU %, DTU %, Transactions, Disk Read Ops/Sec | Health, threshold alerting, autoscale |
+| **Custom metrics** | Sent by applications or agents | OrdersProcessed, QueueLagSeconds | Business KPI alerting, app-specific SLOs |
+
+### Key Facts
+
+- **Retention**: **93 days** for Azure Monitor metrics
+- **Latency**: near real-time ingestion, ideal for fast alerting
+- **Tool**: **Metrics Explorer** for charting, splitting, filtering, pinning, and alert creation
+- **Dimensions**: allow filtering/splitting a metric by attributes such as instance, response code, API name, or geo
+
+### Metric Dimensions Matter
+
+If a metric supports dimensions, you can alert on a subset instead of the full aggregate.
+
+**Example:** Alert only when `Http5xx > 20` for `Region = EastUS` and `Endpoint = /checkout`.
+
+### Metrics vs Logs
+
+| Use Metrics When | Use Logs When |
+|------------------|---------------|
+| You need fast threshold alerting | You need root-cause analysis |
+| You need low-overhead time-series data | You need correlation across resources |
+| You need autoscale inputs | You need long retention and historical forensics |
+| The question says near real-time | The question says complex query or audit/investigation |
+
+> 💡 **AZ-305 heuristic:** **Metrics for detection, logs for diagnosis**.
+
+### Metrics Example
+
+```bash
+az monitor metrics list \
+  --resource /subscriptions/<subId>/resourceGroups/rg-app/providers/Microsoft.Web/sites/contoso-api \
+  --metric Requests \
+  --interval PT1M \
+  --aggregation Total
+```
+
+```kusto
+// Example metric-style log analysis when metrics are not enough
+AppRequests
+| where TimeGenerated > ago(1h)
+| summarize Requests=count(), FailureRate=100.0 * countif(Success == false) / count() by bin(TimeGenerated, 5m)
+| render timechart
+```
+
+---
+
+## 3. Logs (Azure Monitor Logs / Log Analytics)
+
+Logs are stored primarily in a **Log Analytics workspace** and queried with **Kusto Query Language (KQL)**.
+
+### Workspace Design Patterns
+
+| Pattern | Best For | Tradeoff |
+|--------|----------|----------|
+| **Centralized workspace** | Enterprise SOC, shared operations, central governance | Larger blast radius, more RBAC planning |
+| **Decentralized workspaces** | Business unit autonomy, strict segmentation | Harder cross-team correlation |
+| **Workspace per environment** | Dev/Test/Prod separation, retention isolation, chargeback | More management overhead |
+| **Shared workspace across environments** | Smaller estates, easier correlation | Must use table/resource filters carefully |
+
+### Architect Decision Guidance
+
+- **Centralized** if the requirement is **single pane of glass**, SOC analytics, common policy, enterprise dashboards
+- **Per environment** if the requirement stresses **isolation, chargeback, or different retention/compliance needs**
+- **Per region** only when data residency or latency drives the design
+- **Per app** is usually too fragmented unless compliance requires strict segregation
+
+### Access Control Modes
+
+| Mode | Meaning | Exam Relevance |
+|------|---------|----------------|
+| **Workspace-context access** | Access based on workspace permissions | Simpler enterprise operations |
+| **Resource-context access** | Access based on Azure resource RBAC | Better for app/resource owners who should only see logs for resources they manage |
+
+> 💡 **Exam tip:** If the scenario says developers should query logs only for resources they own without broad workspace rights, think **resource-context access**.
+
+### Data Collection Rules (DCR)
+
+DCRs define **what data to collect, how to transform it, and where to send it**. They are the policy layer for **Azure Monitor Agent (AMA)**.
+
+Use DCRs for:
+- Windows/Linux performance counters
+- Windows events / Syslog
+- Custom text logs
+- Filtering before ingestion
+- Sending data to one or more destinations
+
+```bash
+az monitor data-collection rule create \
+  --resource-group rg-monitoring \
+  --name dcr-prod-vm \
+  --location eastus
+```
+
+### Tables and Schemas
+
+| Table Type | Example |
+|-----------|---------|
+| **Platform tables** | `AzureActivity`, `Heartbeat`, `Perf`, `InsightsMetrics` |
+| **App Insights tables** | `AppRequests`, `AppDependencies`, `AppExceptions`, `AppTraces` |
+| **Security tables** | `SecurityAlert`, `SecurityEvent`, `SigninLogs` |
+| **Diagnostic tables** | `AzureDiagnostics` or resource-specific tables |
+
+### Resource-Specific Tables vs AzureDiagnostics
+
+- **Resource-specific mode** -> modern, better schema, better performance, easier per-service analysis
+- **AzureDiagnostics mode** -> legacy catch-all table, less ideal at scale
+
+### Retention and Archiving
+
+- **Default analytics retention**: **30 days**
+- **Configurable analytics retention**: up to **730 days**
+- For long-term/cheap retention, use **Storage** via diagnostic settings or export strategy
+- Use archive/cheap storage patterns for compliance workloads that rarely require interactive queries
+
+```bash
+az monitor log-analytics workspace update \
+  --resource-group rg-monitoring \
+  --workspace-name law-prod-eastus \
+  --retention-time 180
+```
+
+```powershell
+Set-AzOperationalInsightsWorkspace `
+  -ResourceGroupName "rg-monitoring" `
+  -Name "law-prod-eastus" `
+  -RetentionInDays 180
+```
+
+### Basic vs Analytics Logs
+
+| Tier | Best For | Tradeoff |
+|------|----------|----------|
+| **Analytics logs** | Full query experience, alerting, advanced hunting, frequent analysis | Higher cost |
+| **Basic logs** | High-volume, low-value, infrequently queried data | Lower cost, reduced analytics capabilities |
+
+> 💡 **AZ-305 heuristic:** Put **high-value operational/security data** in **Analytics**. Put **high-volume diagnostic data with occasional access** in **Basic** if the feature set is sufficient.
+
+### Dedicated Clusters / Commitment Tiers
+
+- Use **commitment tiers** when ingestion volume is predictable and high
+- Use **dedicated clusters** for large enterprises needing isolation/performance and large-scale workspace strategy
+- Architect lens: optimize **cost per GB** and governance consistency, not just raw feature count
+
+### Cross-Workspace Query Example
+
+```kusto
+union
+  workspace('law-prod-eastus').Heartbeat,
+  workspace('law-dr-centralus').Heartbeat
+| where TimeGenerated > ago(15m)
+| summarize LastSeen=max(TimeGenerated) by Computer, _ResourceId
+```
+
+### KQL Basics You Must Know
+
+| Operator | Purpose | Example |
+|---------|---------|---------|
+| `where` | Filter rows | `| where TimeGenerated > ago(1h)` |
+| `project` | Select columns | `| project TimeGenerated, Computer, CounterValue` |
+| `summarize` | Aggregate | `| summarize avg(CounterValue) by Computer` |
+| `join` | Correlate data | `Heartbeat | join kind=inner Perf on Computer` |
+
+### Real KQL Queries for Exam Prep
+
+```kusto
+// 1. Top failing application requests
+AppRequests
+| where TimeGenerated > ago(24h)
+| where Success == false
+| summarize Failures=count() by Name, ResultCode
+| top 10 by Failures desc
+```
+
+```kusto
+// 2. CPU trend for VMs
+Perf
+| where TimeGenerated > ago(1h)
+| where ObjectName == "Processor" and CounterName == "% Processor Time" and InstanceName == "_Total"
+| summarize AvgCPU=avg(CounterValue) by Computer, bin(TimeGenerated, 5m)
+| render timechart
+```
+
+```kusto
+// 3. Heartbeat gap detection
+Heartbeat
+| summarize LastHeartbeat=max(TimeGenerated) by Computer
+| where LastHeartbeat < ago(10m)
+```
+
+```kusto
+// 4. Activity log changes to production resources
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where ResourceGroup =~ "rg-prod"
+| project TimeGenerated, Caller, OperationNameValue, ActivityStatusValue, ResourceId
+```
+
+```kusto
+// 5. Join VM heartbeat with performance data
+Heartbeat
+| where TimeGenerated > ago(30m)
+| summarize LastHeartbeat=max(TimeGenerated) by Computer
+| join kind=inner (
+    Perf
+    | where TimeGenerated > ago(30m)
+    | where ObjectName == "Memory" and CounterName == "Available MBytes"
+    | summarize AvgFreeMB=avg(CounterValue) by Computer
+) on Computer
+| project Computer, LastHeartbeat, AvgFreeMB
+```
+
+### Architect Guidance
+
+- Use **metrics** for fast alerts
+- Use **logs** for deep analysis and audit/compliance
+- Use **multiple workspaces intentionally**, not accidentally
+- Design for **RBAC, retention, and chargeback** up front
+
+---
+
+## 4. Diagnostic Settings
+
+Diagnostic settings route platform logs and metrics from Azure resources to downstream destinations.
+
+### What Supports Diagnostic Settings?
+
+Most Azure resource providers support diagnostic settings, including:
+- VMs
+- Key Vault
+- Storage Accounts
+- App Service
+- SQL Database / Managed Instance
+- Azure Firewall
+- Application Gateway
+- AKS
+- Cosmos DB
+- Event Hubs
+- Recovery Services vaults
+
+### Supported Destinations
+
+| Destination | Best For |
+|------------|----------|
+| **Log Analytics workspace** | Central analysis, alerting, KQL, workbooks |
+| **Storage account** | Long-term retention, compliance, low-cost archive |
+| **Event Hub** | Stream to SIEM/SOAR or external analytics platform |
+| **Partner solution** | Direct integration with approved ecosystem tools |
+
+### Categories
+
+- **Logs** -> events, audit trails, engine-specific operations
+- **Metrics** -> time-series values where the resource supports export
+
+### Resource-Specific vs Azure Diagnostics Mode
+
+| Mode | Recommendation |
+|------|----------------|
+| **Resource-specific** | Preferred for modern designs |
+| **AzureDiagnostics** | Legacy/compatibility only |
+
+### Policy Automation
+
+Use **Azure Policy DeployIfNotExists** to enforce baseline diagnostic settings across subscriptions and landing zones.
+
+> 💡 **Exam tip:** If the requirement says **automatically enable diagnostics for all new resources**, think **Azure Policy + DeployIfNotExists**.
+
+### Diagnostic Settings Examples
+
+```bash
+az monitor diagnostic-settings create \
+  --name send-to-law \
+  --resource /subscriptions/<subId>/resourceGroups/rg-app/providers/Microsoft.KeyVault/vaults/kv-prod-01 \
+  --workspace /subscriptions/<subId>/resourceGroups/rg-monitoring/providers/Microsoft.OperationalInsights/workspaces/law-prod-eastus \
+  --logs '[{"category":"AuditEvent","enabled":true}]' \
+  --metrics '[{"category":"AllMetrics","enabled":true}]'
+```
+
+```powershell
+$law = Get-AzOperationalInsightsWorkspace -ResourceGroupName "rg-monitoring" -Name "law-prod-eastus"
+$kv = Get-AzResource -ResourceGroupName "rg-app" -Name "kv-prod-01" -ResourceType "Microsoft.KeyVault/vaults"
+New-AzDiagnosticSetting `
+  -Name "send-to-law" `
+  -ResourceId $kv.ResourceId `
+  -WorkspaceId $law.ResourceId `
+  -Enabled $true
+```
+
+### Design Guidance
+
+- Send **operational logs** to Log Analytics
+- Send **regulatory retention** data to Storage
+- Send **external SIEM feed** to Event Hub
+- Standardize categories with Policy so teams do not manually configure every resource
+
+---
+
+## 5. Application Insights
+
+Application Insights is the **application performance monitoring (APM)** part of Azure Monitor.
+
+### Workspace-Based vs Classic
+
+- **Use workspace-based Application Insights** for modern designs
+- It unifies application telemetry with Log Analytics, Defender, and Sentinel workflows
+- **Classic** is legacy and should not be the architect default
+
+### Instrumentation Choices
+
+| Option | Best For | Tradeoff |
+|-------|----------|----------|
+| **Auto-instrumentation** | Fast onboarding, App Service/VM scenarios, limited code change | Less customization |
+| **SDK instrumentation** | Deep telemetry control, custom events, business metrics, distributed tracing | More implementation effort |
+
+### Telemetry Types
+
+- **Requests**
+- **Dependencies**
+- **Exceptions**
+- **Traces**
+- **Page views**
+- **Custom events / custom metrics**
+
+### Features You Must Know
+
+| Feature | Why It Matters |
+|--------|-----------------|
+| **Application Map** | Dependency topology and blast-radius view |
+| **Live Metrics** | Near real-time debugging without waiting for full ingestion |
+| **Availability tests** | Synthetic tests from multiple locations |
+| **Smart detection** | Automatic anomaly detection and issue identification |
+| **Distributed tracing** | Correlates requests across services using operation IDs |
+
+### Sampling Strategies
+
+| Strategy | Use When |
+|---------|----------|
+| **Adaptive sampling** | High-volume apps, dynamic control |
+| **Fixed-rate sampling** | Predictable ingestion/cost control |
+| **Ingestion sampling** | Reduce cost after data reaches service |
+
+> ⚠️ **Exam trap:** Sampling reduces cost but can reduce fidelity. If the requirement says **full forensic capture** or **every transaction must be retained**, be careful with aggressive sampling.
+
+### Connection String vs Instrumentation Key
+
+- Prefer **connection string**
+- Treat standalone instrumentation key guidance as legacy/older design language
+- Workspace-based architecture aligns naturally with connection-string configuration
+
+### Application Insights Example
+
+```bash
+az monitor app-insights component create \
+  --app contoso-api-ai \
+  --location eastus \
+  --resource-group rg-app \
+  --workspace /subscriptions/<subId>/resourceGroups/rg-monitoring/providers/Microsoft.OperationalInsights/workspaces/law-prod-eastus \
+  --application-type web
+```
+
+### Useful KQL
+
+```kusto
+// Slow dependencies by target
+AppDependencies
+| where TimeGenerated > ago(6h)
+| summarize AvgDurationMs=avg(DurationMs), Calls=count() by Target, DependencyType
+| top 10 by AvgDurationMs desc
+```
+
+```kusto
+// Exceptions correlated with requests
+AppExceptions
+| where TimeGenerated > ago(24h)
+| summarize Exceptions=count() by ProblemId, Method, OuterMessage
+| top 10 by Exceptions desc
+```
+
+### Architect Guidance
+
+- Use Application Insights for **user experience + transaction flow**, not just raw logging
+- Pair it with **availability tests + action groups** for critical apps
+- Use workspace-based mode to align with **central monitoring and security analytics**
+
+---
+
+## 6. Alerts
+
+Alerts turn telemetry into action.
+
+### Alert Types
+
+| Type | Best For |
+|------|----------|
+| **Metric alerts** | Fast threshold-based detection |
+| **Log alerts** | Complex KQL-based conditions |
+| **Activity log alerts** | Control plane events, policy changes, service health |
+| **Smart detection alerts** | App Insights anomaly-driven findings |
+
+### Alert Rule Components
+
+- **Scope** -> target resource/resource group/subscription
+- **Condition** -> threshold, KQL query, signal logic
+- **Action** -> Action Group
+- **Details** -> severity, rule name, description, frequency
+
+### Severity Levels
+
+| Severity | Meaning |
+|---------|---------|
+| **0** | Critical production outage / security incident |
+| **1** | High impact, immediate attention |
+| **2** | Significant but not outage |
+| **3** | Warning / degraded condition |
+| **4** | Informational |
+
+### Action Groups
+
+Action Groups can trigger:
+- Email
+- SMS
+- Push/voice (where supported)
+- Webhook
+- Logic App
+- Azure Function
+- Automation Runbook
+- ITSM connector
+
+### Alert Processing Rules
+
+Use alert processing rules to:
+- suppress noisy alerts during maintenance windows
+- route alerts differently after hours
+- change action groups without editing every rule
+
+### Common Alert Schema
+
+Use **common alert schema** to normalize payloads across alert types for downstream automation.
+
+### Alert State Management
+
+- Design stateful logic where supported to reduce duplicate noise
+- Pair with deduplication and maintenance suppression
+- Monitor alert volume, not just resource health
+
+### Cost Considerations
+
+- Metric alerts are typically cheaper and faster for simple thresholds
+- Log alerts are more powerful but can cost more, especially with frequent evaluation and large query scope
+- Over-alerting is both an **operations cost** and a **human reliability issue**
+
+### Alert Examples
+
+```bash
+az monitor action-group create \
+  --resource-group rg-monitoring \
+  --name ag-critical \
+  --short-name critops
+```
+
+```bash
+az monitor metrics alert create \
+  --resource-group rg-monitoring \
+  --name vm-high-cpu \
+  --scopes /subscriptions/<subId>/resourceGroups/rg-app/providers/Microsoft.Compute/virtualMachines/vm-prod-01 \
+  --condition "avg Percentage CPU > 80" \
+  --window-size 5m \
+  --evaluation-frequency 1m \
+  --severity 2 \
+  --action ag-critical
+```
+
+```kusto
+// Log alert query: repeated authentication failures
+SigninLogs
+| where TimeGenerated > ago(15m)
+| where ResultType != 0
+| summarize FailedAttempts=count() by UserPrincipalName, IPAddress
+| where FailedAttempts >= 10
+```
+
+### Architect Guidance
+
+- Use **metric alerts** for fast, common health conditions
+- Use **log alerts** where correlation is required
+- Use **activity log alerts** for governance/control-plane changes
+- Use **alert processing rules** to fight alert fatigue
+
+---
+
+## 7. Workbooks
+
+Workbooks provide **interactive reporting and operational dashboards**.
+
+### What They Are Good At
+
+- Consolidating metrics + logs + Resource Graph into one view
+- Building role-specific dashboards for ops, architects, security, executives
+- Enabling parameters and drill-downs without building a custom app
+
+### Templates vs Custom Workbooks
+
+| Option | When to Use |
+|-------|--------------|
+| **Templates** | Quick start, standard Azure scenarios |
+| **Custom workbooks** | Enterprise dashboards, specific KPIs, cross-resource drill-through |
+
+### Data Sources
+
+- Log Analytics
+- Metrics
+- Azure Resource Graph
+- Azure Resource Health / Azure Monitor data sources
+
+### Parameters and Filters
+
+Common parameters:
+- subscription
+- region
+- environment
+- application name
+- severity
+- time range
+
+### Sharing and Permissions
+
+- Workbook access follows Azure RBAC on the workbook plus underlying data source access
+- Sharing a workbook does **not** bypass workspace/resource permissions
+
+### Architect Guidance
+
+Use Workbooks when the question asks for:
+- **single pane of glass**
+- **interactive troubleshooting dashboard**
+- **cross-subscription visual reporting**
+- **operations dashboard without custom code**
+
+---
+
+## 8. Azure Advisor
+
+Azure Advisor provides architecture recommendations across five categories.
+
+### Five Categories
+
+| Category | Focus |
+|---------|-------|
+| **Reliability** | Resilience, redundancy, backup, HA |
+| **Security** | Exposure reduction, hardening |
+| **Performance** | Efficiency and sizing |
+| **Cost** | Waste reduction and rightsizing |
+| **Operational Excellence** | Best practices and manageability |
+
+### Important Concepts
+
+- **Recommendation digest** -> curated recommendations for improvement
+- **Suppressing recommendations** -> hide accepted/irrelevant items without deleting the service capability
+- **Advisor score** -> tracks improvement posture over time
+
+```bash
+az advisor recommendation list --category Cost
+```
+
+> 💡 **Exam tip:** Advisor is about **recommendations**, not deep telemetry analysis. If the scenario asks for **continuous real-time monitoring**, the answer is not Advisor.
+
+---
+
+## 9. Service Health
+
+### Know the Three Services
+
+| Service | Scope | Use |
+|--------|-------|-----|
+| **Azure Status** | Public/global | Broad public service outage visibility |
+| **Service Health** | Your tenant/subscription | Personalized incidents, planned maintenance, advisories |
+| **Resource Health** | Specific resource | Whether an individual resource is available/unavailable/degraded |
+
+### Key Capabilities
+
+- **Health alerts** for incidents affecting your subscriptions
+- **Planned maintenance notifications**
+- **Service issue visibility** scoped to your tenant
+- **Root Cause Analysis (RCA)** access after major incidents
+
+> 💡 **AZ-305 heuristic:**
+> - Need **personalized tenant impact** -> **Service Health**
+> - Need **single resource condition** -> **Resource Health**
+> - Need **public internet-facing status page** -> **Azure Status**
+
+### Architect Guidance
+
+Use Service Health for:
+- executive communications
+- incident response routing
+- planned maintenance planning
+- subscription-scoped awareness of platform events
+
+---
+
+## 10. Microsoft Defender for Cloud
+
+Microsoft Defender for Cloud is the cloud-native security posture and workload protection service.
+
+### What It Does
+
+| Capability | Meaning |
+|-----------|---------|
+| **CSPM** | Cloud Security Posture Management - assesses configuration/security posture |
+| **Secure score** | Quantified posture improvement score |
+| **Recommendations** | Remediation guidance for misconfigurations |
+| **Regulatory compliance dashboard** | Maps environment posture to standards/frameworks |
+| **CWP plans** | Workload protection for servers, databases, storage, containers, etc. |
+
+### Defender Plans by Resource Type
+
+Examples include plans for:
+- Servers
+- SQL
+- Storage
+- Containers / Kubernetes
+- App Service
+- Key Vault
+- DNS / ARM / APIs depending on workload coverage and plan options
+
+### Recommendations and Remediation
+
+- Prioritize by severity and blast radius
+- Use Policy/automation for repeatable remediation
+- Secure score helps drive governance conversations with leadership
+
+### Integration with Sentinel
+
+- Defender for Cloud surfaces posture + protection findings
+- Sentinel adds **SIEM/SOAR**, correlation, incidents, automation, threat hunting
+- Together they create a stronger SecOps design
+
+```bash
+az security pricing create --name VirtualMachines --tier Standard
+```
+
+```bash
+az security assessment list --resource-group rg-app
+```
+
+### Architect Guidance
+
+- Use Defender for Cloud when the question is about **posture, hardening, recommendations, and workload protection**
+- Do not confuse it with a full SIEM
+
+---
+
+## 11. Microsoft Sentinel (SIEM/SOAR)
+
+Sentinel is Microsoft's cloud-native **SIEM/SOAR** built on Log Analytics.
+
+### Sentinel vs Defender for Cloud
+
+| Need | Choose |
+|------|--------|
+| Security posture management, recommendations, secure score | **Defender for Cloud** |
+| SIEM, incident correlation, SOC workflows, playbooks | **Sentinel** |
+| End-to-end cloud security operations | **Both** |
+
+### Key Components
+
+| Component | Purpose |
+|----------|---------|
+| **Data connectors** | Ingest Microsoft and third-party security data |
+| **Analytics rules** | Generate alerts/incidents from detections |
+| **Incidents** | Case management and triage unit |
+| **Investigation graph** | Entity relationships and attack chain context |
+| **Playbooks** | Logic App-based automation for SOAR |
+| **Workbooks** | Security dashboards and hunting views |
+
+### Cost Considerations
+
+- Sentinel is **ingestion-based**
+- Design for data tiering, selective connector enablement, retention strategy, and noise reduction
+- Cost is driven by **volume + retention + analytics scope**, not just license presence
+
+### Example KQL for Sentinel Hunting
+
+```kusto
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == 0
+| summarize SuccessfulLogins=count(), DistinctIPs=dcount(IPAddress) by UserPrincipalName
+| where DistinctIPs > 5
+| top 20 by DistinctIPs desc
+```
+
+```kusto
+SecurityAlert
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, AlertName, CompromisedEntity, Severity, ProviderName
+| order by TimeGenerated desc
+```
+
+### Architect Guidance
+
+- Choose Sentinel when the requirement says **centralized SIEM**, **SOC**, **incident investigation**, or **SOAR playbooks**
+- Choose Defender for Cloud when the requirement says **posture** or **hardening recommendations**
+
+---
+
+## 12. Azure Arc (Monitoring Hybrid)
+
+Azure Arc extends Azure management and monitoring to on-premises and multicloud servers.
+
+### Core Concepts
+
+| Capability | Why It Matters |
+|-----------|-----------------|
+| **Arc-enabled servers** | Bring hybrid servers under Azure management plane |
+| **Monitoring extensions** | Install AMA and related extensions on hybrid resources |
+| **Policy integration** | Enforce configuration and agent deployment at scale |
+| **Hybrid observability** | One operational model across Azure + non-Azure estate |
+
+### AMA vs Log Analytics Agent
+
+| Agent | Status | Guidance |
+|------|--------|----------|
+| **Azure Monitor Agent (AMA)** | Current strategic agent | Use for new designs |
+| **Log Analytics agent / MMA / OMS agent** | Legacy | Do not choose for new architectures |
+
+### Hybrid Monitoring Architecture
+
+```text
+On-prem / Other Cloud Servers
+        -> Azure Arc
+        -> Azure Monitor Agent
+        -> DCR
+        -> Log Analytics / Metrics / Sentinel / Defender
+```
+
+### Arc Monitoring Commands
+
+```bash
+az connectedmachine extension create \
+  --resource-group rg-hybrid \
+  --machine-name arc-sql-01 \
+  --name AzureMonitorWindowsAgent \
+  --publisher Microsoft.Azure.Monitor \
+  --type AzureMonitorWindowsAgent
+```
+
+```powershell
+New-AzConnectedMachineExtension `
+  -ResourceGroupName "rg-hybrid" `
+  -MachineName "arc-sql-01" `
+  -Name "AzureMonitorWindowsAgent" `
+  -Publisher "Microsoft.Azure.Monitor" `
+  -ExtensionType "AzureMonitorWindowsAgent" `
+  -Location "EastUS"
+```
+
+### Architect Guidance
+
+- Use Azure Arc when the requirement is **consistent monitoring/governance for hybrid servers**
+- Standardize on **AMA + DCR + Policy** for enterprise rollout
+
+---
+
+## 13. Monitoring Design Patterns
+
+### 1) Single Pane of Glass Architecture
+
+- Central Log Analytics workspace strategy
+- Standard diagnostic settings via Policy
+- Workbooks for operations/SOC views
+- Shared Action Groups and routing logic
+
+### 2) Multi-Tier Application Monitoring
+
+Monitor each layer separately and together:
+- **Frontend** -> availability tests, response time, failure rate
+- **API/App tier** -> requests, dependencies, exceptions, traces
+- **Data tier** -> DTU/vCore, deadlocks, latency, storage, failover health
+
+### 3) Microservices Observability
+
+Use:
+- Application Insights distributed tracing
+- Correlation IDs
+- dependency maps
+- KQL across services
+- noise-aware sampling strategy
+
+### 4) Infrastructure vs Application Monitoring
+
+| Layer | Typical Signals |
+|------|------------------|
+| **Infrastructure** | CPU, memory, disk, network, heartbeat, platform availability |
+| **Application** | request latency, error rate, dependency failures, business transactions |
+
+### 5) Security Monitoring Integration
+
+- Defender for Cloud for posture/protection
+- Sentinel for SIEM/SOAR
+- Azure Monitor + Activity Log + diagnostics for control-plane visibility
+
+### 6) Cost-Effective Monitoring Design
+
+- Metrics for fast/simple alerting
+- Logs for deep investigations only where needed
+- Basic logs for lower-value, high-volume telemetry
+- Commitment tiers for stable large ingestion
+- Sampling for noisy application telemetry
+- Policy-driven standardization to prevent duplicate collection
+
+> 💡 **Architect rule:** Collect everything only if you can afford to store, search, and act on it. Good observability is **intentional**, not just comprehensive.
+
+---
+
+## 14. AZ-305 Decision Scenarios
+
+### Scenario 1 - Enterprise Log Analytics Workspace Design
+A global company wants a single SOC view across 40 subscriptions, but app teams should only see their own resources.
+
+**Best answer:** Centralized workspace strategy with **resource-context access** and RBAC.
+
+**Why:** Central SOC correlation + reduced broad workspace exposure for app teams.
+
+### Scenario 2 - Multi-Region Monitoring Architecture
+A mission-critical app runs in East US and Central US. Operations wants failover visibility even if one region is unavailable.
+
+**Best answer:** Dual-region telemetry collection with cross-workspace queries or resilient centralized monitoring design, plus Service Health and regional dashboards.
+
+**Why:** Monitoring must survive regional failure, not just the application.
+
+### Scenario 3 - Application Performance Monitoring Strategy
+Developers need request traces across web app, API, and database calls with minimal code delay.
+
+**Best answer:** Workspace-based **Application Insights**, auto-instrumentation where possible, SDK where custom events or richer tracing is required.
+
+### Scenario 4 - Security Monitoring and SIEM Decision
+The customer wants posture recommendations for Azure resources and also a SOC-driven incident platform with playbooks.
+
+**Best answer:** **Defender for Cloud + Sentinel**.
+
+**Why:** Defender = posture/protection. Sentinel = SIEM/SOAR.
+
+### Scenario 5 - Alert Fatigue Reduction
+Ops receives hundreds of repeated alerts during planned maintenance.
+
+**Best answer:** Use **alert processing rules** to suppress or reroute alerts during maintenance windows.
+
+### Scenario 6 - Cost Optimization for Monitoring
+A platform team ingests massive low-value verbose diagnostics, but only investigates them occasionally.
+
+**Best answer:** Move suitable data to **Basic logs** or archive/export patterns; keep critical operational/security data in **Analytics**.
+
+### Scenario 7 - Hybrid Monitoring with Arc
+A company must monitor on-premises Windows and Linux servers using the same Azure operational model as Azure VMs.
+
+**Best answer:** **Azure Arc-enabled servers + AMA + DCR + Log Analytics workspace**.
+
+### Scenario 8 - Compliance Logging Requirements
+An auditor requires 1-year searchable logs and multi-year cheap retention for critical resources.
+
+**Best answer:** Set Log Analytics analytics retention as needed up to **730 days** where interactive search is required; send long-term copies to **Storage** for cheaper retention.
+
+### Scenario 9 - Metrics vs Logs for Alerting
+The requirement is to trigger an alert within 1 minute if CPU exceeds 85%.
+
+**Best answer:** **Metric alert**.
+
+**Why:** Faster and cheaper than log query alerting for simple thresholds.
+
+### Scenario 10 - Workspace Segmentation
+A regulated production environment must have different retention and access rules than dev/test.
+
+**Best answer:** **Workspace per environment**.
+
+**Why:** Isolation, different retention, easier chargeback and compliance control.
+
+---
+
+## 15. Quick Reference Trigger Table
+
+| If the scenario says X... | Think Y |
+|---------------------------|---------|
+| Need near real-time threshold alerting | **Metric alert** |
+| Need complex correlation across data | **Log alert + KQL** |
+| Need single pane of glass | **Centralized workspace + Workbooks** |
+| Teams should only see their resources | **Resource-context access** |
+| Need centralized SOC | **Centralized Log Analytics + Sentinel** |
+| Need app transaction tracing | **Application Insights** |
+| Need topology/dependency view | **Application Map** |
+| Need synthetic availability checks | **Availability tests** |
+| Need anomaly-based app insights | **Smart detection** |
+| Need long-term low-cost retention | **Storage destination / archive strategy** |
+| Need 93-day time-series retention | **Metrics database** |
+| Need 30-730 day interactive log retention | **Log Analytics workspace** |
+| Need log collection governance at scale | **DCR + AMA + Policy** |
+| Need automatic diagnostics on new resources | **DeployIfNotExists Policy** |
+| Need SIEM/SOAR | **Microsoft Sentinel** |
+| Need security posture recommendations | **Defender for Cloud** |
+| Need secure score | **Defender for Cloud** |
+| Need public Azure outage info | **Azure Status** |
+| Need tenant-specific outage info | **Service Health** |
+| Need health of one resource | **Resource Health** |
+| Need hybrid server monitoring | **Azure Arc + AMA** |
+| Need avoid legacy agents | **Choose AMA, not MMA/OMS** |
+| Need low-cost high-volume logs | **Basic logs** |
+| Need full analytics and alerting on logs | **Analytics logs** |
+| Need cost optimization for stable high ingestion | **Commitment tier / dedicated cluster strategy** |
+| Need export to external SIEM | **Diagnostic settings -> Event Hub** |
+| Need audit retention | **Diagnostic settings -> Storage** |
+| Need control-plane change visibility | **AzureActivity / Activity log alerts** |
+| Need custom business KPI telemetry | **Custom metrics or custom events** |
+| Need fast autoscale signal | **Metrics** |
+| Need detailed troubleshooting | **Logs + KQL** |
+| Need route/suppress alerts centrally | **Alert processing rules** |
+| Need normalized alert payloads | **Common alert schema** |
+| Need security dashboards | **Sentinel workbooks** |
+| Need optimization recommendations | **Azure Advisor** |
+| Need multi-cloud/hybrid Azure governance | **Azure Arc** |
+
+---
+
+## 16. Common Exam Traps
+
+### 1) Log Analytics Workspace Scope Decisions
+- **Trap:** Assuming one workspace per subscription is always best
+- **Reality:** Choose based on **RBAC, retention, residency, operations, and chargeback**
+
+### 2) Metrics vs Logs for Alerting
+- **Trap:** Using a log alert for every threshold
+- **Reality:** Use **metrics** first for fast/simple threshold alerting
+
+### 3) Application Insights Sampling Impact
+- **Trap:** Enabling aggressive sampling without considering forensic or compliance needs
+- **Reality:** Sampling saves cost but may reduce visibility into rare events
+
+### 4) Sentinel Cost Misconceptions
+- **Trap:** Thinking Sentinel cost is just a flat add-on
+- **Reality:** It is heavily affected by **ingestion volume, retention, and detection scope**
+
+### 5) Diagnostic Settings Destination Limits
+- **Trap:** Forgetting that not every destination pattern is appropriate for every workload
+- **Reality:** Match destination to purpose: **Log Analytics = analysis**, **Storage = retention**, **Event Hub = streaming integration**
+
+### 6) AMA vs Legacy Agent
+- **Trap:** Selecting Log Analytics agent/MMA because of older study material
+- **Reality:** **AMA is the current strategic choice** for new designs
+
+### 7) Service Health vs Resource Health vs Azure Status
+- **Trap:** Mixing the three services
+- **Reality:** **Azure Status = public**, **Service Health = your tenant**, **Resource Health = individual resource**
+
+### 8) Defender for Cloud vs Sentinel
+- **Trap:** Treating them as interchangeable
+- **Reality:** **Defender = posture/protection**, **Sentinel = SIEM/SOAR**
+
+### 9) Workspace-Based Application Insights
+- **Trap:** Defaulting to classic Application Insights
+- **Reality:** Choose **workspace-based** unless legacy compatibility is explicitly required
+
+### 10) Monitoring Only Azure Resources
+- **Trap:** Ignoring hybrid monitoring requirements
+- **Reality:** Use **Azure Arc** when the scenario includes on-premises or multicloud servers
+
+---
+
+## Final Architect Review Checklist
+
+Before picking an answer on AZ-305, ask:
+
+1. **Do I need metrics or logs?**
+2. **Who needs access to the data, and at what scope?**
+3. **What retention/compliance requirement exists?**
+4. **Is this about operations, application performance, security posture, or SIEM?**
+5. **Can I enforce it with Policy and standardize it at scale?**
+6. **What is the cheapest design that still meets operational and compliance needs?**
+
+> 🧠 **Exam mindset:** The best answer is usually the one that is **Azure-native, governed at scale, cost-aware, and operationally sustainable**.
