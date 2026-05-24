@@ -8,7 +8,7 @@ This repository contains AZ-305 study notes and hands-on lab content organized b
 |---|---:|---|
 | Design infrastructure solutions | 30-35% | [Design infrastructure solutions](./Design%20infrastructure%20solutions/) |
 | Design identity, governance, and monitoring solutions | 25-30% | [Design identity, governance, and monitoring solutions](./Design%20identity,%20governance,%20and%20monitoring%20solutions/) |
-| Design Data Storage Solutions | 20-25% | [Design Data Storage Solutions](./Design%20Data%20Storage%20Solutions/) |
+| Design data storage solutions | 20-25% | [Design Data Storage Solutions](./Design%20Data%20Storage%20Solutions/) |
 | Design business continuity solutions | 15-20% | [Design business continuity solutions](./Design%20business%20continuity%20solutions/) |
 
 ## Repository Structure
