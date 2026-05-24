@@ -22,8 +22,8 @@
 - [14. AZ-305 Decision Scenarios](#az-305-decision-scenarios)
 - [15. Quick Reference Trigger Table](#quick-reference-trigger-table)
 - [16. Synapse Link (HTAP)](#synapse-link-htap)
-- [AZ-305 Exam Tips Summary](#az-305-exam-tips-summary)
-- [Architecture Decision Flowchart](#architecture-decision-flowchart)
+- [17. AZ-305 Exam Tips Summary](#az-305-exam-tips-summary)
+- [18. Architecture Decision Flowchart](#architecture-decision-flowchart)
 
 ---
 
@@ -810,7 +810,7 @@ TTL = N   → Expires N seconds after last modified
 ---
 
 <a id="az-305-exam-tips-summary"></a>
-## 🎯 AZ-305 Exam Tips Summary
+## 17. 🎯 AZ-305 Exam Tips Summary
 
 ### Top 10 Things to Remember
 
@@ -839,7 +839,7 @@ TTL = N   → Expires N seconds after last modified
 ---
 
 <a id="architecture-decision-flowchart"></a>
-## 📐 Architecture Decision Flowchart
+## 18. 📐 Architecture Decision Flowchart
 
 ```
 Need a database on Azure?
