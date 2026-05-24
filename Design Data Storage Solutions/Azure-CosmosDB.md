@@ -810,7 +810,7 @@ TTL = N   → Expires N seconds after last modified
 ---
 
 <a id="17-az-305-exam-tips-summary"></a>
-## 17. 🎯 AZ-305 Exam Tips Summary
+## 🎯 AZ-305 Exam Tips Summary
 
 ### Top 10 Things to Remember
 
@@ -839,7 +839,7 @@ TTL = N   → Expires N seconds after last modified
 ---
 
 <a id="18-architecture-decision-flowchart"></a>
-## 18. 📐 Architecture Decision Flowchart
+## 📐 Architecture Decision Flowchart
 
 ```
 Need a database on Azure?
