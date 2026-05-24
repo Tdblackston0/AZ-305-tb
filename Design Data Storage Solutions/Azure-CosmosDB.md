@@ -16,7 +16,7 @@
 - [8. Indexing](#indexing)
 - [9. Change Feed](#change-feed)
 - [10. Security](#security)
-- [11. Backup & Restore](#backup--restore)
+- [11. Backup & Restore](#backup-restore)
 - [12. Cost Optimization](#cost-optimization)
 - [13. Cosmos DB vs Other Services](#cosmos-db-vs-other-services)
 - [14. AZ-305 Decision Scenarios](#az-305-decision-scenarios)
@@ -511,7 +511,7 @@ A **persistent, ordered log of inserts and updates** to items in a container. De
 
 ---
 
-<a id="backup--restore"></a>
+<a id="backup-restore"></a>
 ## 11. Backup & Restore
 
 ### Backup Modes
