@@ -4,8 +4,30 @@
 
 > 🎯 **Exam Weight:** Cosmos DB is heavily tested in AZ-305. Expect 3-5 questions covering consistency levels, partitioning strategy, throughput models, and global distribution decisions.
 
+## Table of Contents
+
+- [Cosmos DB Overview](#1-cosmos-db-overview)
+- [APIs (Data Models)](#2-apis-data-models)
+- [Consistency Levels](#3-consistency-levels)
+- [Partitioning](#4-partitioning)
+- [Request Units (RU/s)](#5-request-units-rus)
+- [Throughput Models](#6-throughput-models)
+- [Global Distribution](#7-global-distribution)
+- [Indexing](#8-indexing)
+- [Change Feed](#9-change-feed)
+- [Security](#10-security)
+- [Backup & Restore](#11-backup-restore)
+- [Cost Optimization](#12-cost-optimization)
+- [Cosmos DB vs Other Services](#13-cosmos-db-vs-other-services)
+- [AZ-305 Decision Scenarios](#14-az-305-decision-scenarios)
+- [Quick Reference Trigger Table](#15-quick-reference-trigger-table)
+- [Synapse Link (HTAP)](#16-synapse-link-htap)
+- [AZ-305 Exam Tips Summary](#17-az-305-exam-tips-summary)
+- [Architecture Decision Flowchart](#18-architecture-decision-flowchart)
+
 ---
 
+<a id="1-cosmos-db-overview"></a>
 ## 1. Cosmos DB Overview
 
 Azure Cosmos DB is a **globally distributed, multi-model, NoSQL database** service with guaranteed single-digit millisecond latency at the 99th percentile.
@@ -35,6 +57,7 @@ Azure Cosmos DB is a **globally distributed, multi-model, NoSQL database** servi
 
 ---
 
+<a id="2-apis-data-models"></a>
 ## 2. APIs (Data Models)
 
 Cosmos DB offers **six API options** chosen at account creation (cannot be changed later).
@@ -64,6 +87,7 @@ Is it a new application with no existing database code?
 
 ---
 
+<a id="3-consistency-levels"></a>
 ## 3. Consistency Levels
 
 Cosmos DB offers **five consistency levels** — a spectrum from strongest to weakest. This is the **most tested Cosmos DB topic on AZ-305**.
@@ -120,6 +144,7 @@ Cosmos DB offers **five consistency levels** — a spectrum from strongest to we
 
 ---
 
+<a id="4-partitioning"></a>
 ## 4. Partitioning
 
 ### Architecture
@@ -190,6 +215,7 @@ Solutions:
 
 ---
 
+<a id="5-request-units-rus"></a>
 ## 5. Request Units (RU/s)
 
 ### What is a Request Unit?
@@ -226,6 +252,7 @@ A **Request Unit (RU)** is a normalized measure combining CPU, IOPS, and memory 
 
 ---
 
+<a id="6-throughput-models"></a>
 ## 6. Throughput Models
 
 ### Three Throughput Models
@@ -287,6 +314,7 @@ No provisioning → pay only for RUs consumed per request
 
 ---
 
+<a id="7-global-distribution"></a>
 ## 7. Global Distribution
 
 ### Multi-Region Configuration
@@ -334,6 +362,7 @@ No provisioning → pay only for RUs consumed per request
 
 ---
 
+<a id="8-indexing"></a>
 ## 8. Indexing
 
 ### Automatic Indexing (Default)
@@ -388,6 +417,7 @@ By default, Cosmos DB **automatically indexes every property** in every item. Th
 
 ---
 
+<a id="9-change-feed"></a>
 ## 9. Change Feed
 
 ### What is Change Feed?
@@ -438,6 +468,7 @@ A **persistent, ordered log of inserts and updates** to items in a container. De
 
 ---
 
+<a id="10-security"></a>
 ## 10. Security
 
 ### Authentication & Authorization
@@ -480,6 +511,7 @@ A **persistent, ordered log of inserts and updates** to items in a container. De
 
 ---
 
+<a id="11-backup-restore"></a>
 ## 11. Backup & Restore
 
 ### Backup Modes
@@ -512,6 +544,7 @@ A **persistent, ordered log of inserts and updates** to items in a container. De
 
 ---
 
+<a id="12-cost-optimization"></a>
 ## 12. Cost Optimization
 
 ### Cost Reduction Strategies
@@ -551,6 +584,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="13-cosmos-db-vs-other-services"></a>
 ## 13. Cosmos DB vs Other Services
 
 ### Decision Matrix
@@ -587,6 +621,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="14-az-305-decision-scenarios"></a>
 ## 14. AZ-305 Decision Scenarios
 
 ### Scenario 1: Global E-Commerce Platform
@@ -669,6 +704,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="15-quick-reference-trigger-table"></a>
 ## 15. Quick Reference Trigger Table
 
 **"If the scenario says X, think Y"**
@@ -704,6 +740,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="16-synapse-link-htap"></a>
 ## 16. Synapse Link (HTAP)
 
 ### What is Synapse Link?
@@ -772,6 +809,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="17-az-305-exam-tips-summary"></a>
 ## 🎯 AZ-305 Exam Tips Summary
 
 ### Top 10 Things to Remember
@@ -800,6 +838,7 @@ TTL = N   → Expires N seconds after last modified
 
 ---
 
+<a id="18-architecture-decision-flowchart"></a>
 ## 📐 Architecture Decision Flowchart
 
 ```
