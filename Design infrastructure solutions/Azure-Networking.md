@@ -143,6 +143,8 @@ Azure networking for AZ-305 is about choosing the **right traffic path, trust bo
 
 ### Network topology patterns
 
+> 🎯 **Exam Focus:** For the exam, focus primarily on **Hub-and-Spoke** topology. It's the default enterprise pattern and will appear on the test. Outside of Virtual WAN, it's realistically the only pattern most customers consider for production workloads.
+
 | Pattern | Best for | Strengths | Tradeoffs | Architect guidance |
 |---|---|---|---|---|
 | **Hub-spoke** | Enterprise landing zones, shared services, centralized security | Centralized routing, inspection, DNS, egress control | More routing complexity, possible hub bottlenecks | Default enterprise choice for most AZ-305 scenarios |
@@ -232,6 +234,8 @@ Get-AzPublicIpAddress
 
 ### Connectivity Decision Flow
 
+> ⚠️ **Important:** Service Endpoints and ExpressRoute solve **different problems**. ExpressRoute is for hybrid connectivity (on-prem to Azure). Service Endpoints enable firewall/access control over PaaS resources from specific subnets — they do NOT provide hybrid connectivity.
+
 ```text
 ┌────────────────────────────────────────────────────────────┐
 │                  What kind of connectivity?               │
@@ -245,33 +249,47 @@ Get-AzPublicIpAddress
                │                │                │
                ▼                ▼                ▼
    ┌────────────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
-   │ Need direct, low-  │  │ Must disable     │  │ Need dedicated private  │
-   │ latency private    │  │ public access or │  │ connectivity with high  │
-   │ connectivity?      │  │ use a private IP?│  │ predictability/compliance?│
-   └──────────┬─────────┘  └──────────┬───────┘  └──────────────┬──────────┘
-              │                       │                         │
-     ┌────────┴────────┐      ┌───────┴────────┐        ┌───────┴────────┐
-     │ YES             │ NO   │ YES            │ NO     │ YES            │ NO
-     ▼                 ▼      ▼                ▼        ▼                ▼
-┌──────────────┐  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│ VNet Peering │  │ Virtual  │ │ Private Link │ │ Service      │ │ ExpressRoute │
-│ (or Global   │  │ WAN / Hub│ │ / Private    │ │ Endpoint     │ │              │
-│ Peering)     │  │ design   │ │ Endpoint     │ │              │ └──────┬───────┘
-└──────────────┘  └──────────┘ └──────────────┘ └──────────────┘        │
-                                                                          ▼
-                                                             ┌────────────────────────┐
-                                                             │ Need many branches or  │
-                                                             │ managed global transit?│
-                                                             └───────────┬────────────┘
-                                                                         │
-                                                               ┌─────────┴─────────┐
-                                                               │ YES               │ NO
-                                                               ▼                   ▼
-                                                      ┌────────────────┐  ┌────────────────┐
-                                                      │  Virtual WAN   │  │  VPN Gateway   │
-                                                      │                │  │  (S2S/P2S/V2V) │
-                                                      └────────────────┘  └────────────────┘
+   │ Need direct, low-  │  │ Must disable     │  │ Need hybrid connectivity│
+   │ latency private    │  │ public access or │  │ (on-prem to Azure)?     │
+   │ connectivity?      │  │ use a private IP?│  └──────────────┬──────────┘
+   └──────────┬─────────┘  └──────────┬───────┘                 │
+              │                       │                ┌────────┴────────┐
+     ┌────────┴────────┐      ┌───────┴────────┐       │ YES             │ NO
+     │ YES             │ NO   │ YES            │ NO    ▼                 ▼
+     ▼                 ▼      ▼                ▼  ┌─────────────────┐  (No hybrid
+┌──────────────┐  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ │ Need dedicated │   needed)
+│ VNet Peering │  │ Virtual  │ │ Private Link │ │ Service      │ │ private path   │
+│ (or Global   │  │ WAN / Hub│ │ / Private    │ │ Endpoint     │ │ w/ compliance? │
+│ Peering)     │  │ design   │ │ Endpoint     │ │ (subnet-level│ └────────┬──────┘
+└──────────────┘  └──────────┘ └──────────────┘ │ PaaS access) │          │
+                                                └──────────────┘ ┌────────┴────────┐
+                                                                 │ YES             │ NO
+                                                                 ▼                 ▼
+                                                         ┌──────────────┐  ┌──────────────┐
+                                                         │ ExpressRoute │  │ VPN Gateway  │
+                                                         └──────┬───────┘  │ (S2S/P2S)    │
+                                                                │          └──────────────┘
+                                                                ▼
+                                                   ┌────────────────────────┐
+                                                   │ Need many branches or  │
+                                                   │ managed global transit?│
+                                                   └───────────┬────────────┘
+                                                               │
+                                                     ┌─────────┴─────────┐
+                                                     │ YES               │ NO
+                                                     ▼                   ▼
+                                            ┌────────────────┐  ┌────────────────┐
+                                            │  Virtual WAN   │  │  VPN Gateway   │
+                                            │  (managed)     │  │ (self-managed) │
+                                            └────────────────┘  └────────────────┘
 ```
+
+**Service Endpoints vs Private Endpoints — Key Distinction:**
+- **Service Endpoint**: Extends your VNet identity to PaaS services, enabling firewall rules that restrict PaaS access to specific subnets. The service **still uses its public endpoint**. Good for simple subnet-level restriction when public access can remain enabled.
+- **Private Endpoint**: Creates a private IP in your VNet for the PaaS service via Private Link. Enables you to **disable the public endpoint entirely**. Required for true private-only access.
+
+**Services that support Service Endpoints:**
+Azure Storage, Azure SQL Database, Azure Cosmos DB, Azure Key Vault, Azure Service Bus, Azure Event Hubs, Azure App Service, Azure Container Registry, Azure Cognitive Services, and others. Check Microsoft documentation for the current list.
 
 ### Quick Decision Matrix
 
@@ -434,9 +452,12 @@ Add-AzVirtualNetworkPeering -Name "spoke-to-hub" `
 
 NSGs are **stateful packet filters** for subnets and NICs.
 
+> 🎯 **Exam Focus:** Understand NSG rule ordering and Service Tags. Expect troubleshooting questions where you must identify why traffic is blocked or allowed based on rule priority and evaluation order.
+
 #### NSG rules
 
-- Rules have **priority**: lower number wins.
+- Rules have **priority**: lower number wins (lower priority number = higher precedence).
+- **Rule ordering matters**: Rules are evaluated in priority order. The first matching rule (lowest number) determines the action. Once matched, no further rules are evaluated.
 - Rules specify:
   - source
   - source port
@@ -446,6 +467,21 @@ NSGs are **stateful packet filters** for subnets and NICs.
   - access (allow/deny)
   - direction (inbound/outbound)
 - NSGs are **stateful**: return traffic is automatically allowed for established flows.
+
+#### Service Tags
+
+**Service Tags** are Microsoft-managed prefixes that simplify NSG rules by representing groups of IP addresses for Azure services.
+
+Common service tags to know:
+- **Internet** - all public internet IP addresses
+- **VirtualNetwork** - VNet address space, peered VNets, on-prem (via gateway)
+- **AzureLoadBalancer** - Azure infrastructure load balancer health probes
+- **Storage** - Azure Storage IP ranges (can be region-specific: `Storage.EastUS`)
+- **Sql** - Azure SQL Database IP ranges
+- **AzureActiveDirectory** - Entra ID service endpoints
+- **AzureMonitor** - Azure Monitor services
+
+> ⚠️ **Exam trap:** When troubleshooting NSG rules, always check: (1) rule priority ordering, (2) whether the correct service tag is used, (3) whether both subnet and NIC NSGs are evaluated, and (4) direction (inbound vs outbound).
 
 #### Default rules
 
@@ -756,6 +792,8 @@ Use for **global HTTP/S load balancing**, edge acceleration, and application del
 
 Traffic Manager is **DNS-based** routing, not a proxy.
 
+> ⚠️ **Exam trap:** Traffic Manager **only works for publicly reachable endpoints**. Applications that are fully internal (private endpoints only) cannot use Traffic Manager because it cannot health-probe private endpoints. For internal-only global routing, consider other patterns like cross-region load balancing or application-level failover.
+
 #### Routing methods
 
 - **Priority** - active/passive failover
@@ -796,7 +834,9 @@ Use nested profiles for complex global architectures, such as regional grouping 
 
 ### ExpressRoute
 
-ExpressRoute provides **private connectivity** between on-premises and Microsoft cloud services.
+ExpressRoute provides **private connectivity** between on-premises environments and Microsoft cloud services via a direct carrier-provided connection. It is the hybrid networking solution for linking on-premises data centers and colocation facilities to Azure.
+
+> 🎯 **Exam Focus:** Remember that ExpressRoute is specifically for hybrid connectivity (on-prem to Azure). It requires a **VPN Gateway** (ExpressRoute Gateway) deployed in Azure in the GatewaySubnet. Don't confuse ExpressRoute with Private Link — they solve different problems.
 
 #### Peering types
 
@@ -885,7 +925,9 @@ New-AzVirtualNetworkGateway -Name "vpngw-hub-eastus" `
 
 ### Virtual WAN
 
-Virtual WAN is a managed networking service for **branch, user, and Azure connectivity at scale**.
+Virtual WAN is a **managed global hub-and-spoke service** for branch, user, and Azure connectivity at scale. It simplifies multi-region and multi-branch networking by providing Microsoft-managed hubs with integrated routing.
+
+> 🎯 **Exam Focus:** Know that Virtual WAN is the **only "managed" option** for scenarios requiring many branches or managed global transit. Using VPN Gateway alone requires the customer to manage all configuration and routing manually.
 
 #### Best fit
 
@@ -903,10 +945,11 @@ Virtual WAN is a managed networking service for **branch, user, and Azure connec
 
 #### When Virtual WAN vs traditional hub-spoke
 
-| Scenario | Choose |
-|---|---|
-| Small number of VNets, custom control | Traditional hub-spoke |
-| Global enterprise with many sites and managed transit need | Virtual WAN |
+| Scenario | Choose | Notes |
+|---|---|---|
+| Small number of VNets, custom control | Traditional hub-spoke | Customer manages all configuration and routing |
+| Global enterprise with many sites and managed transit need | Virtual WAN | Microsoft manages the hub infrastructure |
+| Need many branches with simplified operations | Virtual WAN | **Only "managed" option** — VPN Gateway alone requires manual config |
 
 ### Hybrid design shortcuts
 
@@ -921,6 +964,8 @@ Virtual WAN is a managed networking service for **branch, user, and Azure connec
 ## 7. Private Connectivity
 
 ### Private Link & Private Endpoints
+
+**Private Link** is the Azure PaaS service that enables **Private Endpoints** on supported Azure services. Think of Private Link as the underlying platform capability, and Private Endpoints as the specific instances you create in your VNet.
 
 A **Private Endpoint** assigns a private IP from your VNet to an Azure PaaS service via Private Link.
 
@@ -943,7 +988,20 @@ Private Endpoints usually require:
 - zone linking to VNets
 - conditional forwarding/resolver integration for on-premises
 
-**Exam rule:** If Private Endpoint is present, **DNS is usually part of the answer**.
+> 🎯 **Exam Focus:** Expect questions on DNS for Private Endpoints. The answer will be either **Azure Private DNS zones** or the specific `privatelink.*` DNS zone for the service. You need to identify the correct zone name.
+
+**Common Private DNS zones to know:**
+| Service | Private DNS Zone |
+|---|---|
+| Azure SQL Database | `privatelink.database.windows.net` |
+| Azure Blob Storage | `privatelink.blob.core.windows.net` |
+| Azure File Storage | `privatelink.file.core.windows.net` |
+| Azure Key Vault | `privatelink.vaultcore.azure.net` |
+| Azure Cosmos DB (SQL API) | `privatelink.documents.azure.com` |
+| Azure App Service / Functions | `privatelink.azurewebsites.net` |
+| Azure Event Hubs | `privatelink.servicebus.windows.net` |
+
+**Exam rule:** If Private Endpoint is present, **DNS is usually part of the answer**. Be ready to select the correct `privatelink.*` zone.
 
 #### When Private Endpoint vs Service Endpoint
 
