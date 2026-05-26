@@ -328,7 +328,7 @@ A VNet is the logical isolation boundary for Azure networking. Good VNet design 
 > | `172.16.0.0` – `172.31.255.255` | `172.16.0.0/12` | ~1 million | Mid-size networks |
 > | `192.168.0.0` – `192.168.255.255` | `192.168.0.0/16` | ~65,000 | Small networks / home |
 >
-> **Exam tip:** Any IP address starting with `172.32.x.x` through `172.255.x.x` is **NOT** private RFC1918 space — this is a common exam trap!
+> **Exam Tip:** Any IP address starting with `172.32.x.x` through `172.255.x.x` is **NOT** private RFC1918 space — this is a common exam trap!
   - on-premises networks
   - other Azure VNets
   - future DR regions
@@ -1073,7 +1073,7 @@ Public DNS returns CNAME: storageaccount.privatelink.blob.core.windows.net
       │
       ▼
 If using Azure Private DNS → Returns private IP (10.x.x.x)
-If using on-prem DNS → Must forward to Azure (168.63.129.16) or Azure DNS Private Resolver
+If using on-premises DNS → Must forward to Azure (168.63.129.16) or Azure DNS Private Resolver
 ```
 
 **Conditional Forwarding Setup for Hybrid:**
@@ -1227,8 +1227,8 @@ Use split-horizon when the same hostname resolves differently:
 - internal clients → private IP
 
 **Common scenario:** Your web app `app.contoso.com` should resolve to:
-- Public IP (13.x.x.x) when accessed from the internet
-- Private Endpoint IP (10.x.x.x) when accessed from the corporate network
+- Public IP (e.g., 20.1.2.3) when accessed from the internet
+- Private Endpoint IP (e.g., 10.0.1.5) when accessed from the corporate network
 
 **Implementation:**
 1. Public DNS zone: `app.contoso.com` → public IP
