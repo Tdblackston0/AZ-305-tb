@@ -340,9 +340,17 @@ az monitor data-collection rule create \
 ### Retention and Archiving
 
 - **Default analytics retention**: **30 days**
-- **Configurable analytics retention**: up to **730 days**
-- For long-term/cheap retention, use **Storage** via diagnostic settings or export strategy
-- Use archive/cheap storage patterns for compliance workloads that rarely require interactive queries
+- **Configurable analytics retention**: up to **730 days** (2 years)
+- **Archive tier**: up to **12 years** with lower cost; data can be restored to analytics tier for querying when needed
+- For compliance scenarios requiring immutable copies outside Log Analytics, use **Storage export** via diagnostic settings or data export rules
+
+| Retention Tier | Duration | Cost | Query Capability |
+|---|---|---|---|
+| **Interactive (Analytics)** | 30-730 days | Higher | Full KQL, alerting |
+| **Archive** | Up to 12 years | Lower | Restore required before querying |
+| **Storage export** | Unlimited | Lowest | External tools required |
+
+> 💡 **AZ-305 tip:** For compliance scenarios, consider **archive tier** for long-term retention within Log Analytics, and **Storage export** for immutable audit trails.
 
 ```bash
 az monitor log-analytics workspace update \
@@ -961,7 +969,9 @@ Azure Arc extends Azure management and monitoring to on-premises and multicloud 
 | Agent | Status | Guidance |
 |------|--------|----------|
 | **Azure Monitor Agent (AMA)** | Current strategic agent | Use for new designs |
-| **Log Analytics agent / MMA / OMS agent** | Legacy | Do not choose for new architectures |
+| **Log Analytics agent / MMA / OMS agent** | ⚠️ **Deprecated August 31, 2024** | Do not choose for new architectures |
+
+> **Important:** The Log Analytics agent (also known as MMA or OMS agent) was officially deprecated on **August 31, 2024**. All new monitoring designs must use the **Azure Monitor Agent (AMA)** with **Data Collection Rules (DCRs)**. Migrate existing deployments to AMA before support ends.
 
 ### Hybrid Monitoring Architecture
 
@@ -998,6 +1008,174 @@ New-AzConnectedMachineExtension `
 
 - Use Azure Arc when the requirement is **consistent monitoring/governance for hybrid servers**
 - Standardize on **AMA + DCR + Policy** for enterprise rollout
+
+---
+
+<a id="vm-insights"></a>
+## 13b. VM Insights
+
+VM Insights is a pre-built monitoring solution for **Azure VMs and Arc-enabled servers** that provides performance and dependency visualization.
+
+### What VM Insights Provides
+
+| Feature | Purpose |
+|---------|---------|
+| **Performance view** | CPU, memory, disk, and network metrics with historical trends |
+| **Map view** | Interactive dependency visualization showing connections between VMs and external services |
+| **Health monitoring** | Guest OS health signals and alerting |
+| **At-scale monitoring** | Monitor hundreds of VMs from a single view |
+
+### Requirements
+
+- **Azure Monitor Agent (AMA)** with appropriate DCR configuration
+- **Dependency Agent** for Map functionality (optional but recommended)
+- Log Analytics workspace for data storage
+
+### When to Use VM Insights
+
+| Scenario | VM Insights Value |
+|----------|-------------------|
+| Understanding application dependencies | Map view shows service-to-service connections |
+| Capacity planning | Performance trends help predict resource needs |
+| Troubleshooting performance issues | Correlate CPU, memory, disk, and network metrics |
+| Hybrid monitoring | Consistent view for Azure VMs and Arc-enabled servers |
+
+### Enable VM Insights
+
+```bash
+# Enable VM Insights using Azure Policy (recommended for scale)
+az policy assignment create \
+  --name "enable-vm-insights" \
+  --policy-set-definition "Enable Azure Monitor for VMs" \
+  --scope "/subscriptions/<sub-id>"
+```
+
+```powershell
+# Enable for a single VM
+Set-AzVMExtension `
+  -ResourceGroupName "rg-app" `
+  -VMName "vm-prod-01" `
+  -Name "AzureMonitorWindowsAgent" `
+  -Publisher "Microsoft.Azure.Monitor" `
+  -ExtensionType "AzureMonitorWindowsAgent" `
+  -TypeHandlerVersion "1.0"
+```
+
+**Exam tip:** If the scenario asks for **VM dependency mapping**, **at-scale VM monitoring**, or **understanding which services connect to which**, think **VM Insights**.
+
+---
+
+<a id="change-analysis"></a>
+## 13c. Change Analysis
+
+Azure Monitor Change Analysis detects **configuration changes** to Azure resources, helping with root cause analysis and troubleshooting.
+
+### What Change Analysis Tracks
+
+| Change Type | Examples |
+|-------------|----------|
+| **Resource property changes** | VM size change, IP address modification |
+| **Configuration changes** | Web app settings, connection strings |
+| **Dependency changes** | New service connections, removed integrations |
+| **Code/content changes** | App Service file changes (requires integration) |
+
+### Key Features
+
+- **Timeline view**: See what changed and when
+- **Diff view**: Compare before and after states
+- **Correlation**: Link changes to application issues
+- **Integration**: Works with Application Insights and App Service diagnostics
+
+### When to Use Change Analysis
+
+| Scenario | Change Analysis Value |
+|----------|----------------------|
+| "The app broke after deployment" | See exactly what configuration changed |
+| Performance degradation investigation | Correlate changes with performance timeline |
+| Security incident response | Identify unauthorized configuration changes |
+| Audit and compliance | Track configuration drift over time |
+
+### Enable Change Analysis
+
+```bash
+# Register the Change Analysis resource provider
+az provider register --namespace Microsoft.ChangeAnalysis
+
+# Change Analysis is automatically enabled for most Azure resources
+# For web app in-guest changes, enable in App Service Diagnostic settings
+```
+
+**Exam tip:** If the scenario asks **"what changed before the incident?"** or mentions **root cause analysis** and **configuration troubleshooting**, think **Change Analysis**.
+
+---
+
+<a id="container-monitoring"></a>
+## 13d. Container & Kubernetes Monitoring
+
+For containerized workloads, Azure provides specialized monitoring through **Container Insights**, **Azure Monitor managed service for Prometheus**, and **Azure Managed Grafana**.
+
+### Monitoring Options
+
+| Service | Best For | Data Model |
+|---------|----------|------------|
+| **Container Insights** | AKS monitoring with Log Analytics integration | Logs + Metrics |
+| **Azure Monitor managed Prometheus** | Kubernetes-native metrics at scale | Prometheus metrics |
+| **Azure Managed Grafana** | Dashboards for Prometheus and Azure Monitor | Visualization layer |
+
+### Container Insights
+
+Container Insights provides comprehensive monitoring for AKS and Arc-enabled Kubernetes clusters:
+
+- **Node and pod performance metrics**
+- **Container logs and stdout/stderr**
+- **Kubernetes events**
+- **Live data streaming**
+- **Recommended alerts**
+
+### Azure Monitor managed service for Prometheus
+
+For Kubernetes-native monitoring, Azure offers a fully managed Prometheus service:
+
+| Feature | Value |
+|---------|-------|
+| **Prometheus compatibility** | Standard Prometheus query language (PromQL) |
+| **Scale** | Handles large-scale Kubernetes environments |
+| **No infrastructure management** | Fully managed by Azure |
+| **Native AKS integration** | Easy enablement for AKS clusters |
+
+### Azure Managed Grafana
+
+Managed Grafana provides visualization for:
+- Azure Monitor metrics
+- Prometheus metrics
+- Log Analytics data
+- Azure Data Explorer
+
+### Decision Matrix
+
+| Need | Choose |
+|------|--------|
+| Quick AKS monitoring with Log Analytics | **Container Insights** |
+| Prometheus-native monitoring at scale | **Azure Monitor managed Prometheus** |
+| Advanced dashboards and PromQL | **Azure Managed Grafana** |
+| Complete Kubernetes observability stack | **All three together** |
+
+```bash
+# Enable Container Insights for AKS
+az aks enable-addons \
+  --resource-group rg-aks \
+  --name aks-prod \
+  --addons monitoring \
+  --workspace-resource-id /subscriptions/<sub-id>/resourceGroups/rg-monitoring/providers/Microsoft.OperationalInsights/workspaces/law-prod
+
+# Enable Prometheus metrics collection
+az aks update \
+  --resource-group rg-aks \
+  --name aks-prod \
+  --enable-azure-monitor-metrics
+```
+
+**Exam tip:** If the scenario mentions **AKS**, **Kubernetes**, or **container monitoring**, think **Container Insights** for logs and basic metrics, **Prometheus** for Kubernetes-native metrics, and **Grafana** for dashboards.
 
 ---
 

@@ -485,6 +485,13 @@ Assignments inherit downward.
 - Commonly created by Azure-managed systems such as **deployment stacks** and historically **Blueprints**.
 - Think of deny assignments as a hard prevention layer.
 
+> **Important:** Customers **cannot** directly create deny assignments. Only Azure creates them through managed resources such as:
+> - **Deployment Stacks** (deny settings)
+> - **Azure Blueprints** (legacy)
+> - **Azure Managed Applications**
+>
+> If you need to block specific actions, use Azure Policy with `Deny` effect or remove RBAC permissions instead.
+
 ### RBAC best practices
 - Prefer **groups over direct user assignments**.
 - Apply **least privilege**.
@@ -573,6 +580,18 @@ Core JSON elements:
 - `if` / `then`
 - `effect`
 
+### Policy modes
+
+| Mode | Evaluates | When to Use |
+|---|---|---|
+| **All** | All resource types including resource group properties | Policies targeting resource group properties or all resources |
+| **Indexed** | Only resource types that support tags and location | Most common; use for tag/location policies |
+| **Microsoft.Kubernetes.Data** | Kubernetes clusters (AKS, Arc-enabled) | Container/pod security policies |
+| **Microsoft.KeyVault.Data** | Key Vault data plane (certificates, keys, secrets) | Key Vault content governance |
+| **Microsoft.Network.Data** | Azure Virtual Network Manager custom membership | Network topology policies |
+
+**Exam tip:** Use **Indexed** mode for tag-related policies. Use **All** mode when you need to evaluate resource group properties or resource types that don't support tags.
+
 **Sample policy definition**
 ```json
 {
@@ -609,7 +628,10 @@ Core JSON elements:
 | **Modify** | Add or change properties/tags | Inherit or enforce tags |
 | **DeployIfNotExists** | Deploy related resources after evaluation | Diagnostic settings, agents |
 | **AuditIfNotExists** | Audit when related config is missing | Diagnostics/backup missing |
+| **Manual** | Requires human attestation for compliance | Custom compliance workflows, audit controls |
 | **Disabled** | Turn off effect | Testing / staged rollout |
+
+> **Note on Manual effect:** The `Manual` effect is used for policies where compliance cannot be automatically evaluated. It requires human attestation through the Azure portal or API. Use for controls that need manual verification, such as documented procedures or external audit requirements.
 
 ### Policy initiatives
 An **initiative** is a group of policies managed as one package, such as:
@@ -744,6 +766,82 @@ For exam purposes, think in dependency order:
 
 ---
 
+<a id="8b-deployment-stacks"></a>
+## 8b. Deployment Stacks (Modern Blueprints Replacement)
+
+Deployment Stacks are the **modern alternative to Azure Blueprints** for managing resources as a single, governed unit with lifecycle protection.
+
+### What Deployment Stacks provide
+
+| Capability | Description |
+|---|---|
+| **Resource grouping** | Manage a collection of resources as a single unit |
+| **Deny settings** | Prevent unauthorized modifications to stack-managed resources |
+| **Delete behavior control** | Define what happens to resources when the stack is deleted |
+| **Multi-scope deployment** | Deploy at resource group, subscription, or management group scope |
+| **Update management** | Track and manage changes to stack-managed resources |
+
+### Deny settings
+
+Deny settings create **deny assignments** that prevent changes to stack-managed resources, even from users with RBAC permissions.
+
+| Deny Mode | What It Blocks |
+|---|---|
+| **None** | No protection (default) |
+| **DenyDelete** | Prevents deletion of stack-managed resources |
+| **DenyWriteAndDelete** | Prevents both modification and deletion |
+
+### Delete behavior
+
+Control what happens to resources when a stack is deleted:
+
+| Setting | Behavior |
+|---|---|
+| **DeleteResources** | Delete all resources managed by the stack |
+| **DeleteResourceGroups** | Delete resource groups created by the stack |
+| **DetachResources** | Detach resources (they become unmanaged but remain) |
+
+### Deployment Stack vs other tools
+
+| Tool | Best For | Limitation |
+|---|---|---|
+| **Deployment Stacks** | Governed resource lifecycle with protection | Newer feature, still evolving |
+| **Blueprints** | Legacy packaged governance | Deprecated |
+| **ARM/Bicep templates** | Resource deployment | No lifecycle management |
+| **Template Specs** | Reusable template sharing | No deny settings or lifecycle control |
+
+### Example commands
+
+```bash
+# Create a deployment stack at subscription scope with deny settings
+az stack sub create \
+  --name "production-landing-zone" \
+  --location eastus \
+  --template-file main.bicep \
+  --deny-settings-mode denyWriteAndDelete \
+  --delete-resources true \
+  --delete-resource-groups true
+
+# List deployment stacks
+az stack sub list
+
+# Delete a deployment stack and its resources
+az stack sub delete --name "production-landing-zone" --delete-resources true
+```
+
+```powershell
+# Create a deployment stack at resource group scope
+New-AzResourceGroupDeploymentStack `
+  -Name "app-stack" `
+  -ResourceGroupName "rg-app-prod" `
+  -TemplateFile "main.bicep" `
+  -DenySettingsMode "DenyWriteAndDelete"
+```
+
+**Exam tip:** If the scenario asks for **protected resource deployment**, **lifecycle management**, or **preventing changes to deployed resources**, think **Deployment Stacks** (not Blueprints).
+
+---
+
 <a id="9-resource-locks"></a>
 ## 9. Resource Locks
 
@@ -855,6 +953,86 @@ az tag update \
 ```powershell
 Update-AzTag -ResourceId "/subscriptions/<sub-id>/resourceGroups/rg-payments-prod-eastus" -Operation Merge -Tag @{CostCenter="FIN001";Owner="PaymentsTeam";Environment="Prod";Application="Payments"}
 ```
+
+---
+
+<a id="10b-azure-resource-graph"></a>
+## 10b. Azure Resource Graph
+
+Azure Resource Graph enables **fast, efficient querying of Azure resources at scale** across subscriptions and management groups.
+
+### Why Resource Graph matters for governance
+
+| Capability | Governance Value |
+|---|---|
+| **Cross-subscription queries** | Single query across entire enterprise estate |
+| **Near real-time data** | Resources indexed within minutes of change |
+| **KQL-based queries** | Familiar query language for complex analysis |
+| **Change tracking** | Query resource configuration changes over time |
+| **Policy integration** | Compliance data available via Resource Graph |
+
+### Common governance queries
+
+```kusto
+// Find all resources without a CostCenter tag
+resources
+| where isnull(tags.CostCenter) or tags.CostCenter == ""
+| project name, type, resourceGroup, subscriptionId, location
+| order by subscriptionId, resourceGroup
+```
+
+```kusto
+// List all public IP addresses (security audit)
+resources
+| where type == "microsoft.network/publicipaddresses"
+| project name, resourceGroup, subscriptionId, properties.ipAddress
+```
+
+```kusto
+// Find VMs by size for rightsizing analysis
+resources
+| where type == "microsoft.compute/virtualmachines"
+| extend vmSize = properties.hardwareProfile.vmSize
+| summarize count() by tostring(vmSize)
+| order by count_ desc
+```
+
+```kusto
+// Query policy compliance state
+policyresources
+| where type == "microsoft.policyinsights/policystates"
+| where properties.complianceState == "NonCompliant"
+| project policyAssignmentName = properties.policyAssignmentName, 
+          resourceId = properties.resourceId,
+          policyDefinitionName = properties.policyDefinitionName
+| take 100
+```
+
+```kusto
+// Track resource changes over time
+resourcechanges
+| where properties.changeType == "Update"
+| where properties.targetResourceType == "microsoft.compute/virtualmachines"
+| project changeTime = properties.changeAttributes.timestamp, 
+          resourceId = properties.targetResourceId,
+          changedProperties = properties.changes
+| order by changeTime desc
+| take 50
+```
+
+### Azure CLI and PowerShell
+
+```bash
+# Run a Resource Graph query
+az graph query -q "resources | where type == 'microsoft.compute/virtualmachines' | summarize count() by location"
+```
+
+```powershell
+# Run a Resource Graph query
+Search-AzGraph -Query "resources | where type == 'microsoft.compute/virtualmachines' | summarize count() by location"
+```
+
+**Exam tip:** If the scenario asks for **cross-subscription resource inventory**, **governance reporting**, or **finding resources with missing tags**, think **Azure Resource Graph**.
 
 ---
 
