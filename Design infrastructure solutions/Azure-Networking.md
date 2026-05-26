@@ -318,6 +318,17 @@ A VNet is the logical isolation boundary for Azure networking. Good VNet design 
 
 - Use **RFC1918** space unless there is a specific reason not to.
 - Avoid overlapping ranges across:
+
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Know the RFC1918 private address ranges by heart. Expect 1-2 questions where you must identify valid private IP ranges or spot when an address is NOT RFC1918 compliant.
+>
+> **RFC1918 Private Address Ranges:**
+> | Range | CIDR | Total addresses | Common use |
+> |---|---|---|---|
+> | `10.0.0.0` – `10.255.255.255` | `10.0.0.0/8` | ~16.7 million | Large enterprise networks |
+> | `172.16.0.0` – `172.31.255.255` | `172.16.0.0/12` | ~1 million | Mid-size networks |
+> | `192.168.0.0` – `192.168.255.255` | `192.168.0.0/16` | ~65,000 | Small networks / home |
+>
+> **Exam tip:** Any IP address starting with `172.32.x.x` through `172.255.x.x` is **NOT** private RFC1918 space — this is a common exam trap!
   - on-premises networks
   - other Azure VNets
   - future DR regions
@@ -346,6 +357,8 @@ A VNet is the logical isolation boundary for Azure networking. Good VNet design 
 
 Use subnets for **policy boundaries, route boundaries, and workload grouping**.
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Subnet delegation is a frequent exam topic, especially for App Service and Azure Container Apps (ACA). When a subnet is delegated, it becomes **dedicated** to that service — meaning **only one service instance can use the delegated subnet**. This is a key design constraint.
+
 Common subnet patterns:
 - `GatewaySubnet` - required for VPN/ExpressRoute gateway.
 - `AzureBastionSubnet` - required for Bastion.
@@ -354,11 +367,17 @@ Common subnet patterns:
 - `AppGatewaySubnet` - recommended dedicated subnet for Application Gateway.
 - `Web`, `App`, `Data`, `Mgmt` - standard tiered application segmentation.
 
-**Subnet delegation** allows a subnet to be dedicated to a specific PaaS service, such as:
-- Azure App Service Environment
-- Azure Container Apps environment scenarios
-- Azure NetApp Files
-- Azure Database services in delegated VNet modes
+**Subnet delegation** allows a subnet to be dedicated to a specific PaaS service. Key services requiring delegation:
+
+| Service | Delegation type | Key requirement |
+|---|---|---|
+| **App Service Environment** | `Microsoft.Web/hostingEnvironments` | Requires dedicated subnet; minimum /24 recommended |
+| **App Service VNet Integration** | `Microsoft.Web/serverFarms` | **Dedicated subnet required** — one App Service Plan per delegated subnet |
+| **Azure Container Apps (ACA)** | `Microsoft.App/environments` | **Dedicated subnet required** — minimum /23 recommended; one ACA environment per subnet |
+| **Azure NetApp Files** | `Microsoft.NetApp/volumes` | Dedicated subnet required |
+| **Azure SQL Managed Instance** | `Microsoft.Sql/managedInstances` | Dedicated subnet required |
+
+> ⚠️ **Exam trap:** If a question mentions App Service VNet integration or ACA environment, remember that delegation **almost always means dedicated subnet** — you cannot share the delegated subnet with other resources or services.
 
 Use delegation when the platform service needs direct control of subnet operations.
 
@@ -375,14 +394,30 @@ Key facts:
 - Peering does **not** require gateways.
 - Use gateway transit carefully for shared hybrid connectivity.
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Understand the **traffic control options** available with VNet peering:
+>
+> | Setting | What it controls | Default |
+> |---|---|---|
+> | **Allow virtual network access** | Controls whether resources in the peered VNets can communicate | Enabled |
+> | **Allow forwarded traffic** | Allows traffic that originated outside the peered VNet to flow through peering | Disabled |
+> | **Allow gateway transit** | Allows the peered VNet to use this VNet's gateway | Disabled |
+> | **Use remote gateway** | Allows this VNet to use the peered VNet's gateway | Disabled |
+>
+> **Exam scenarios:**
+> - If spoke VNets need to reach on-prem through a hub's VPN/ExpressRoute gateway → enable **Allow gateway transit** on hub, **Use remote gateway** on spokes
+> - If traffic must flow through an NVA or firewall in a hub → enable **Allow forwarded traffic**
+> - To completely block traffic between peered VNets → disable **Allow virtual network access**
+
 ### VNet-to-VNet connectivity options
+
+> 🎯 **Exam Focus:** For VNet-to-VNet connectivity, realistically you only need to know two options: **VNet Peering** for direct Azure-to-Azure connectivity, and **Virtual WAN** for managed transit at scale. The other options exist but are rarely the exam's preferred answer.
 
 | Option | Best for | Pros | Cons |
 |---|---|---|---|
 | **VNet peering** | Azure-to-Azure private connectivity | Fast, simple, high bandwidth, low latency | Non-transitive |
+| **Virtual WAN** | Large transit design | Managed scale | Less custom than self-built hub |
 | **VNet-to-VNet VPN** | When peering is not suitable or encryption over gateway is needed | Encrypted tunnel | Higher latency, gateway cost |
 | **ExpressRoute + transit/gateway** | Enterprise hybrid and controlled private routing | Predictable private path | Costlier and more complex |
-| **Virtual WAN** | Large transit design | Managed scale | Less custom than self-built hub |
 
 ### Service endpoints vs Private endpoints
 
@@ -395,6 +430,10 @@ Key facts:
 | Data exfiltration control | Moderate | Stronger |
 | On-prem access over private path | Not directly the same way | Yes, with DNS/routing integration |
 | Best use | Simple subnet-based restriction | Strong isolation and private-only access |
+
+> ⚠️ **Exam trap — NSGs and Private Endpoints:** By default, NSG rules do **not** apply to private endpoints. To use NSG rules to control traffic to private endpoints, you must explicitly enable **Network Policies for Private Endpoints** on the subnet. Without this configuration, NSG rules will be bypassed for private endpoint traffic.
+>
+> Enable using CLI: `az network vnet subnet update --disable-private-endpoint-network-policies false`
 
 **Architect rule:** If the exam says **disable public access**, **use private IP**, **private connectivity from on-prem**, or **reduce exfiltration risk**, choose **Private Endpoint**.
 
@@ -502,6 +541,19 @@ Outbound defaults include:
 | **Subnet** | Broad workload segmentation | Preferred for consistency |
 | **NIC** | Exception handling on specific VMs | Use sparingly; complexity rises fast |
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Expect multi-subnet VNet scenarios with NSGs attached at both **subnet level and NIC level**. You may see a series of questions on the same configuration asking whether specific traffic would pass.
+>
+> **NSG Evaluation Order:**
+> 1. **Inbound traffic**: Subnet NSG evaluated first → then NIC NSG
+> 2. **Outbound traffic**: NIC NSG evaluated first → then Subnet NSG
+>
+> **Key rules:**
+> - Traffic must be allowed by **ALL applicable NSGs** — if either denies, traffic is blocked
+> - If no NSG is associated at a level, traffic passes to the next evaluation point
+> - Use **Effective Security Rules** in the portal to see the combined result
+>
+> **Example scenario:** VM has NIC NSG allowing port 443. Subnet NSG denies port 443. **Result: Traffic blocked** (both must allow).
+
 #### NSG flow logs
 
 - Historical traffic logging for NSG-evaluated flows.
@@ -547,11 +599,14 @@ Add-AzNetworkSecurityRuleConfig -Name "Allow-App-To-Sql" `
 
 ASGs let you group NICs logically and reference the group in NSG rules instead of IP ranges.
 
+> 🎯 **Exam Focus:** ASGs don't come up frequently in practice, but watch for this specific scenario: **if NSG rules target specific IPs but those IPs might change** (auto-scaling, VM replacement, dynamic workloads), **ASGs are the answer**. They provide a stable reference point regardless of IP changes.
+
 #### When to use ASGs
 
 - Dynamic app tiers where IP tracking is painful.
 - VM-based workloads in the same VNet.
 - Environments with frequent scale changes.
+- **Key trigger:** Question mentions "IPs change frequently" or "dynamic scaling" + NSG rules needed.
 
 **Good fit:** `asg-web`, `asg-app`, `asg-db`.  
 **Poor fit:** broad cross-VNet abstraction or replacing all network design.
@@ -840,12 +895,18 @@ ExpressRoute provides **private connectivity** between on-premises environments 
 
 #### Peering types
 
-| Peering | Use for |
-|---|---|
-| **Private peering** | VNets in Azure |
-| **Microsoft peering** | Microsoft public services such as Microsoft 365/Azure PaaS services where supported/configured |
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Understand the difference between Private peering and Microsoft peering — expect at least one question on this.
 
-> ⚠️ **Exam trap:** Do not confuse **private peering** with Private Link. Private peering is for ExpressRoute circuit connectivity; Private Link is a service-level private access model.
+| Peering | Use for | Traffic type |
+|---|---|---|
+| **Private peering** | Access to Azure VNets | Traffic stays entirely on private network; used for VM, database, and internal app access |
+| **Microsoft peering** | Access to Microsoft public services (M365, Azure PaaS public endpoints, Dynamics 365) | Traffic goes to Microsoft public services but uses the dedicated ExpressRoute circuit instead of internet |
+
+**Key distinctions:**
+- **Private peering** = Your on-prem network connects to your Azure VNets over the ExpressRoute circuit. This is the most common peering type for Azure workloads.
+- **Microsoft peering** = Your on-prem network can reach Microsoft 365 and Azure PaaS services (Storage, SQL, etc.) over the ExpressRoute circuit instead of over the public internet. Requires route filters to specify which services to advertise.
+
+> ⚠️ **Exam trap:** Do not confuse **private peering** with Private Link. Private peering is for ExpressRoute circuit connectivity; Private Link is a service-level private access model that provides a private IP in your VNet.
 
 #### ExpressRoute SKUs and features
 
@@ -892,7 +953,13 @@ Range from **Basic** to **VpnGw5**. Higher SKUs provide more throughput, tunnels
 
 #### BGP support
 
-Use BGP for dynamic route exchange in larger or changing hybrid networks.
+> 🎯 **Exam Focus:** BGP's typical use cases are:
+> - **Routing in large networks** with many routes or complex topologies
+> - **Routing on the internet** (ExpressRoute Microsoft peering, multi-homed connections)
+> - **Dynamic route exchange** when routes change frequently
+> - **Active-active VPN** configurations require BGP for automatic failover
+
+Use BGP for dynamic route exchange in larger or changing hybrid networks. If a scenario mentions "hundreds of routes," "dynamic failover," or "multi-homed connectivity," BGP is likely part of the answer.
 
 #### IKEv2 vs OpenVPN
 
@@ -969,6 +1036,13 @@ Virtual WAN is a **managed global hub-and-spoke service** for branch, user, and 
 
 A **Private Endpoint** assigns a private IP from your VNet to an Azure PaaS service via Private Link.
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Private Endpoints can **span regions, subscriptions, and even tenants**. This is a powerful capability for enterprise architectures:
+> - **Cross-region:** Create a private endpoint in East US for a Storage account in West US
+> - **Cross-subscription:** Create a private endpoint in Subscription A for a SQL Database in Subscription B
+> - **Cross-tenant:** Create a private endpoint for a service in a partner's tenant (requires approval)
+>
+> This flexibility enables hub-spoke architectures where a central Private Endpoint serves multiple consuming applications.
+
 #### Use cases
 
 - Storage account private access
@@ -983,10 +1057,30 @@ Use **Private Link Service** to publish your own service privately to consumers.
 
 #### DNS integration
 
-Private Endpoints usually require:
-- Azure Private DNS zone
-- zone linking to VNets
-- conditional forwarding/resolver integration for on-premises
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Private Endpoint DNS resolution is a critical topic. Make sure you understand the complete resolution path, including **conditional forwarding** for hybrid scenarios.
+
+Private Endpoints require proper DNS configuration:
+- Azure Private DNS zone with the appropriate `privatelink.*` name
+- Zone linking to VNets that need resolution
+- **Conditional forwarding** for on-premises clients
+
+**DNS Resolution Flow:**
+```text
+Client query: storageaccount.blob.core.windows.net
+      │
+      ▼
+Public DNS returns CNAME: storageaccount.privatelink.blob.core.windows.net
+      │
+      ▼
+If using Azure Private DNS → Returns private IP (10.x.x.x)
+If using on-prem DNS → Must forward to Azure (168.63.129.16) or Azure DNS Private Resolver
+```
+
+**Conditional Forwarding Setup for Hybrid:**
+1. Create Private DNS zone (e.g., `privatelink.blob.core.windows.net`)
+2. Link zone to Azure VNets
+3. Configure on-prem DNS to forward `privatelink.*` queries to Azure DNS resolver (inbound endpoint)
+4. Deploy **Azure DNS Private Resolver** for bi-directional resolution
 
 > 🎯 **Exam Focus:** Expect questions on DNS for Private Endpoints. You'll use **Azure Private DNS zones** to host the appropriate `privatelink.*` zone name for the service. You need to identify the correct zone name for each service type.
 
@@ -1101,6 +1195,22 @@ Best for:
 - private service discovery
 - hub-spoke shared name resolution
 
+### Azure DNS vs Custom DNS on VNets
+
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Understand the implications of using Azure-provided DNS vs custom DNS servers on your VNets.
+
+| DNS Configuration | Implications |
+|---|---|
+| **Azure-provided DNS (default)** | Automatically resolves Azure Private DNS zones linked to the VNet; no additional configuration needed for Private Endpoints; limited to Azure services |
+| **Custom DNS servers** | Must configure forwarders to Azure DNS (168.63.129.16) for Private Endpoint resolution; provides integration with on-prem DNS; more complex setup |
+
+**Key decision points:**
+- If you use **custom DNS servers** on your VNet, you **must** configure them to forward Azure private zones to `168.63.129.16` or deploy **Azure DNS Private Resolver**
+- Azure-provided DNS cannot resolve on-premises names — you need custom DNS or Azure DNS Private Resolver for hybrid scenarios
+- VMs using custom DNS won't automatically resolve Private Endpoint names without proper forwarding
+
+> ⚠️ **Exam trap:** If a question mentions Private Endpoints not resolving, and the VNet uses custom DNS servers, the answer is likely "configure conditional forwarders" or "use Azure DNS Private Resolver."
+
 ### DNS forwarding and resolver
 
 Use **Azure DNS Private Resolver** or DNS forwarders when you need:
@@ -1110,9 +1220,41 @@ Use **Azure DNS Private Resolver** or DNS forwarders when you need:
 
 ### Split-horizon DNS
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Split-horizon (also called split-brain DNS) is a common exam scenario.
+
 Use split-horizon when the same hostname resolves differently:
 - public clients → public IP
 - internal clients → private IP
+
+**Common scenario:** Your web app `app.contoso.com` should resolve to:
+- Public IP (13.x.x.x) when accessed from the internet
+- Private Endpoint IP (10.x.x.x) when accessed from the corporate network
+
+**Implementation:**
+1. Public DNS zone: `app.contoso.com` → public IP
+2. Azure Private DNS zone linked to VNet: `app.contoso.com` → private IP
+3. On-prem DNS forwards to Azure for internal resolution
+
+### DNS-based authorization for managed certificates
+
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Understand how Azure PaaS services use DNS for certificate validation when issuing managed certificates.
+
+**How it works:**
+1. You request a managed certificate for your custom domain (e.g., `api.contoso.com`)
+2. Azure generates a unique TXT record value
+3. You add this TXT record to your DNS zone (e.g., `_dnsauth.api.contoso.com`)
+4. Azure validates the record exists with the correct value
+5. Only then does Azure issue the certificate
+
+**Services that use DNS-based authorization:**
+| Service | DNS Record Required |
+|---|---|
+| **Azure API Management (APIM)** | TXT record for custom domain certificate |
+| **Azure App Service** | TXT record for custom domain verification and managed certificate |
+| **Azure Front Door (AFD)** | TXT record for custom domain validation |
+| **Azure CDN** | CNAME or TXT record for domain verification |
+
+> ⚠️ **Exam scenario:** If a question asks about custom domain certificates not being issued or failing validation, the answer is likely related to missing or incorrect DNS TXT records.
 
 ### Private Endpoint DNS integration
 
@@ -1150,51 +1292,152 @@ New-AzPrivateDnsVirtualNetworkLink -ResourceGroupName "rg-network-prod" -ZoneNam
 <a id="9-network-monitoring"></a>
 ## 9. Network Monitoring
 
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Network Watcher is **heavily tested** on the AZ-305 exam. Expect multiple questions on Network Watcher capabilities and which tool to use for specific troubleshooting scenarios. Study this section thoroughly and practice if possible.
+
 ### Network Watcher
 
-Network Watcher is the core Azure networking diagnostics service.
+Network Watcher is the core Azure networking diagnostics service. It provides a suite of tools for monitoring, diagnosing, and gaining insights into your Azure network.
 
-### Key tools
+### Key tools and when to use them
 
-| Tool | Use for |
-|---|---|
-| **Connection troubleshoot** | Test connectivity between endpoints |
-| **IP flow verify** | Check whether NSG allows or denies traffic |
-| **Next hop** | See effective routing decision |
-| **NSG flow logs** | Record allowed/denied flow metadata |
-| **Traffic Analytics** | Analyze NSG flow logs at scale |
-| **Connection Monitor** | Ongoing end-to-end connectivity monitoring |
+| Tool | What it does | When to use | Exam scenario trigger |
+|---|---|---|---|
+| **Connection troubleshoot** | Tests TCP connectivity between source and destination | Diagnose why VM can't reach a service | "VM cannot connect to..." |
+| **IP flow verify** | Checks if a packet is allowed/denied by NSG rules | Identify NSG blocking traffic | "Traffic blocked", "NSG issue" |
+| **Next hop** | Shows effective routing decision | Identify UDR or routing issues | "Packets going wrong direction", "routing problem" |
+| **NSG flow logs** | Records all allowed/denied flows through NSG | Historical traffic analysis, compliance | "Audit network traffic", "what traffic passed" |
+| **Traffic Analytics** | AI-powered analysis of NSG flow logs | Identify traffic patterns, threats, bandwidth hogs | "Analyze traffic patterns", "identify anomalies" |
+| **Connection Monitor** | Ongoing monitoring of connectivity health | Continuous monitoring and alerting | "Ongoing monitoring", "alert on connectivity loss" |
+| **Packet capture** | Captures packets on VM NIC | Deep troubleshooting, security investigation | "Capture traffic for analysis" |
+| **VPN troubleshoot** | Diagnoses VPN Gateway issues | VPN connectivity problems | "VPN tunnel down" |
+| **NSG diagnostics** | Detailed NSG rule evaluation | Complex NSG troubleshooting | "Which rule is blocking" |
+| **Effective security rules** | Shows combined NSG rules affecting a NIC | Understand aggregate NSG impact | "Multiple NSGs, what's effective" |
+
+### Detailed tool capabilities
+
+#### IP Flow Verify
+- Tests a specific 5-tuple (source IP, dest IP, source port, dest port, protocol)
+- Returns: Allow or Deny + the specific NSG rule causing the decision
+- **Use when:** You need to know if NSG is the problem and which rule
+
+#### Next Hop
+- Shows where traffic will be routed for a given destination
+- Returns: Next hop type (VNet, Internet, VirtualAppliance, None) and IP
+- **Use when:** Traffic is going somewhere unexpected or not arriving
+
+#### Connection Troubleshoot
+- Performs an actual connectivity test (not just rule evaluation)
+- Can test TCP connectivity, latency, and packet loss
+- **Use when:** You need end-to-end connectivity verification
+
+#### Connection Monitor
+- Creates persistent monitoring tests
+- Supports Azure VMs, on-prem machines (with agent), and Azure endpoints
+- Provides continuous health metrics and alerting
+- **Use when:** You need ongoing monitoring, not just point-in-time troubleshooting
+
+#### NSG Flow Logs
+- Logs metadata about flows through NSGs (not packet contents)
+- Version 2 includes throughput information
+- Stored in Storage Account, analyzed with Traffic Analytics
+- **Use when:** You need historical traffic records or compliance auditing
+
+### Troubleshooting decision tree
+
+```text
+Problem: Network connectivity issue
+          │
+          ├─► Is it NSG-related?
+          │   └─► IP Flow Verify → Shows allow/deny and rule name
+          │
+          ├─► Is traffic going to wrong destination?
+          │   └─► Next Hop → Shows routing decision
+          │
+          ├─► Need to test actual connectivity?
+          │   └─► Connection Troubleshoot → TCP test with results
+          │
+          ├─► Need ongoing monitoring?
+          │   └─► Connection Monitor → Continuous health checks
+          │
+          ├─► Need historical traffic analysis?
+          │   └─► NSG Flow Logs + Traffic Analytics
+          │
+          └─► Need packet-level inspection?
+              └─► Packet Capture → Full packet data
+```
 
 ### Troubleshooting workflow
 
-1. Check **effective NSGs**.
-2. Check **IP flow verify**.
-3. Check **effective routes / next hop**.
-4. Check **DNS resolution**.
+1. Check **effective NSGs** — see combined rules from subnet and NIC NSGs.
+2. Check **IP flow verify** — test if specific traffic is allowed/denied.
+3. Check **effective routes / next hop** — verify routing is correct.
+4. Check **DNS resolution** — ensure names resolve to expected IPs.
 5. Check **firewall/WAF/load balancer health probe** behavior.
-6. Check **flow logs / Connection Monitor**.
+6. Check **flow logs / Connection Monitor** — historical or ongoing analysis.
+
+### Exam-ready Network Watcher scenarios
+
+| Scenario | Tool to use |
+|---|---|
+| "VM in subnet A cannot reach VM in subnet B" | IP Flow Verify → Connection Troubleshoot |
+| "Web app traffic not reaching backend through firewall" | Next Hop → verify UDR routes to firewall |
+| "Identify which NSG rule is blocking RDP" | IP Flow Verify |
+| "Monitor connectivity health between regions" | Connection Monitor |
+| "Audit all traffic that passed through subnet NSG last week" | NSG Flow Logs |
+| "Identify unusual traffic patterns or potential threats" | Traffic Analytics |
+| "VPN tunnel keeps dropping" | VPN Troubleshoot |
+| "Traffic to storage account timing out" | Connection Troubleshoot (test TCP 443) |
 
 ### Commands
 
 ```bash
+# IP Flow Verify - Check if traffic is allowed
+az network watcher test-ip-flow \
+  --direction Inbound \
+  --protocol TCP \
+  --local 10.11.1.4:* \
+  --remote 10.20.1.4:443 \
+  --vm vm-web01 \
+  --nic nic-web01
+
+# Connection Troubleshoot - Test actual connectivity
 az network watcher test-connectivity \
   -g rg-network-prod \
-  -n conn-test-web-to-sql \
   --source-resource vm-web01 \
   --dest-address sqlprod.database.windows.net \
   --dest-port 1433
 
+# Next Hop - Check routing decision
 az network watcher show-next-hop \
-  -g rg-network-prod \
-  -n next-hop-web01 \
   --source-ip 10.11.1.4 \
   --dest-ip 10.20.1.4 \
+  --vm vm-web01 \
   --nic nic-web01
+
+# Enable NSG Flow Logs
+az network watcher flow-log create \
+  --location eastus \
+  --nsg nsg-web-eastus \
+  --storage-account stflowlogs \
+  --enabled true \
+  --format JSON \
+  --log-version 2
 ```
 
 ```powershell
-Test-AzNetworkWatcherConnectivity -NetworkWatcher $nw -SourceId $vm.Id -DestinationAddress "sqlprod.database.windows.net" -DestinationPort 1433
+# IP Flow Verify
+Test-AzNetworkWatcherIPFlow -NetworkWatcher $nw -TargetVirtualMachineId $vm.Id `
+  -Direction Inbound -Protocol TCP -LocalIPAddress 10.11.1.4 -LocalPort 443 `
+  -RemoteIPAddress 10.20.1.4 -RemotePort 0
+
+# Connection Troubleshoot
+Test-AzNetworkWatcherConnectivity -NetworkWatcher $nw -SourceId $vm.Id `
+  -DestinationAddress "sqlprod.database.windows.net" -DestinationPort 1433
+
+# Get Effective Security Rules
 Get-AzEffectiveNetworkSecurityGroup -NetworkInterfaceName "nic-web01" -ResourceGroupName "rg-network-prod"
+
+# Get Effective Route Table
 Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "rg-network-prod"
 ```
 
@@ -1208,6 +1451,55 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
   - firewall threat intel hits
   - DDoS events
   - Front Door/App Gateway backend health degradation
+
+### Azure Files Networking
+
+> 🔴 **HIGH-YIELD EXAM TOPIC:** Azure Files networking, supported protocols, and required ports appeared on the exam. Make sure you know the protocols and their port requirements.
+
+#### Supported protocols and ports
+
+| Protocol | Port | Use case | Notes |
+|---|---|---|---|
+| **SMB 3.x** | **TCP 445** | Windows file shares, AD integration | Most common; requires port 445 open |
+| **NFS 4.1** | **TCP 2049** | Linux file shares | Premium tier only; no AD integration |
+| **SFTP** | **TCP 22** | Secure file transfer (SSH-based) | Requires hierarchical namespace (ADLS Gen2) |
+| **REST API** | **TCP 443** | Programmatic access via HTTPS | Standard Azure Storage REST |
+
+#### SMB over QUIC
+
+> 🔴 **HIGH-YIELD EXAM TOPIC:** SMB over QUIC is a newer feature that may appear on the exam.
+
+**What is SMB over QUIC?**
+- Tunnels SMB traffic inside **HTTPS (port 443)** using the QUIC protocol
+- Enables SMB file access **without requiring port 445** to be open
+- Designed for **remote/mobile workers** who need to access Azure Files without VPN
+
+**Why it matters:**
+- Many ISPs and corporate networks block port 445 (security risk for older SMB versions)
+- SMB over QUIC allows secure file share access from anywhere without VPN
+- Uses TLS 1.3 encryption built into QUIC
+
+**Requirements:**
+- Azure Files Premium or Standard
+- Windows 11 or Windows Server 2022 Datacenter: Azure Edition clients
+- Azure Active Directory Kerberos authentication configured
+
+#### Azure Files connectivity options
+
+| Access method | Description | When to use |
+|---|---|---|
+| **Public endpoint** | Access via `<storage>.file.core.windows.net` | Simple scenarios, firewall rules for security |
+| **Private Endpoint** | Private IP in your VNet | Secure access, hybrid via ExpressRoute/VPN |
+| **Service Endpoint** | Subnet-level restriction | Restrict to specific VNets, public endpoint remains |
+| **SMB over QUIC** | SMB tunneled in HTTPS | Remote users without VPN, blocked port 445 |
+
+#### Port requirements summary
+
+**Know these ports for the exam:**
+- **SMB**: TCP 445 (or TCP 443 with SMB over QUIC)
+- **NFS**: TCP 2049
+- **SFTP**: TCP 22
+- **REST/HTTPS**: TCP 443
 
 ---
 
@@ -1336,12 +1628,17 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 | future acquisitions / avoid overlap | Large CIDR planning |
 | app tier micro-segmentation | NSG + ASG |
 | NIC-level exception | NIC NSG association |
+| IPs change frequently / dynamic scaling | ASG for NSG rules |
 | inspect effective network path | Next hop / effective routes |
 | determine NSG allow/deny result | IP flow verify |
 | ongoing connectivity checks | Connection Monitor |
 | inspect allowed/denied traffic history | NSG flow logs |
+| analyze traffic patterns | Traffic Analytics |
+| troubleshoot VM connectivity | Connection Troubleshoot |
 | private DNS for PaaS | Azure Private DNS zone |
 | same name internal and external different answers | Split-horizon DNS |
+| custom DNS on VNet + Private Endpoints not resolving | Conditional forwarder to Azure DNS |
+| managed certificate for custom domain | DNS TXT record validation |
 | shared hybrid transit for spokes | Gateway transit |
 | branch-to-branch via Microsoft backbone | ExpressRoute Global Reach |
 | very high-throughput dedicated connectivity | ExpressRoute Direct |
@@ -1355,6 +1652,11 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 | compare malicious traffic intelligence filtering | Azure Firewall threat intelligence |
 | secure remote admin without jump box | Bastion |
 | web app private origin behind edge | Front Door + Private Link origins |
+| Windows file share access | SMB (port 445) or SMB over QUIC (443) |
+| Linux file share | NFS (port 2049) |
+| file transfer without VPN / blocked port 445 | SMB over QUIC |
+| NSG not applying to Private Endpoint | Enable Network Policies for Private Endpoints |
+| App Service or ACA subnet requirement | Dedicated delegated subnet |
 
 ---
 
@@ -1415,6 +1717,28 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 
 - Private Endpoint without correct DNS is an incomplete design.
 - If clients cannot resolve the private name, connectivity fails.
+
+### 11. Subnet delegation means dedicated
+
+- **Delegated subnets are dedicated** — only one service instance per delegated subnet.
+- App Service VNet integration and ACA both require dedicated delegated subnets.
+- Don't try to share a delegated subnet with other resources.
+
+### 12. NSG doesn't apply to Private Endpoints by default
+
+- By default, NSG rules **do not apply** to Private Endpoint traffic.
+- You must enable **Network Policies for Private Endpoints** on the subnet to use NSGs.
+
+### 13. Azure Files port requirements
+
+- **SMB uses port 445** — often blocked by ISPs.
+- For blocked port 445 scenarios, consider **SMB over QUIC** (port 443).
+- **NFS uses port 2049**; **SFTP uses port 22**.
+
+### 14. Custom DNS breaks Private Endpoint resolution
+
+- If VNet uses custom DNS servers, you **must** configure conditional forwarders.
+- Forward `privatelink.*` zones to Azure DNS (168.63.129.16) or use Azure DNS Private Resolver.
 
 ---
 
