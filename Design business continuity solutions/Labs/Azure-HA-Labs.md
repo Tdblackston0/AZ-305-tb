@@ -884,7 +884,7 @@ Get-AzTrafficManagerProfile -Name $Tm -ResourceGroupName $RG1 | Select-Object Na
 ### IaC Implementation
 #### Bicep
 ```bicep
-resource tm 'Microsoft.Network/trafficManagerProfiles@2022-04-01' = {
+resource tm 'Microsoft.Network/trafficManagerProfiles@2022-04-01-preview' = {
   name: 'tm-ha'
   location: 'global'
   properties: {
