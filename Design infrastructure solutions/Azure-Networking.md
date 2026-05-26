@@ -836,7 +836,7 @@ Use nested profiles for complex global architectures, such as regional grouping 
 
 ExpressRoute provides **private connectivity** between on-premises environments and Microsoft cloud services via a direct carrier-provided connection. It is the hybrid networking solution for linking on-premises data centers and colocation facilities to Azure.
 
-> 🎯 **Exam Focus:** Remember that ExpressRoute is specifically for hybrid connectivity (on-prem to Azure). It requires a **VPN Gateway** (ExpressRoute Gateway) deployed in Azure in the GatewaySubnet. Don't confuse ExpressRoute with Private Link — they solve different problems.
+> 🎯 **Exam Focus:** Remember that ExpressRoute is specifically for hybrid connectivity (on-prem to Azure). It requires a **virtual network gateway** (ExpressRoute type) deployed in Azure in the GatewaySubnet. Don't confuse ExpressRoute with Private Link — they solve different problems.
 
 #### Peering types
 
@@ -988,7 +988,7 @@ Private Endpoints usually require:
 - zone linking to VNets
 - conditional forwarding/resolver integration for on-premises
 
-> 🎯 **Exam Focus:** Expect questions on DNS for Private Endpoints. The answer will be either **Azure Private DNS zones** or the specific `privatelink.*` DNS zone for the service. You need to identify the correct zone name.
+> 🎯 **Exam Focus:** Expect questions on DNS for Private Endpoints. You'll use **Azure Private DNS zones** to host the appropriate `privatelink.*` zone name for the service. You need to identify the correct zone name for each service type.
 
 **Common Private DNS zones to know:**
 | Service | Private DNS Zone |
