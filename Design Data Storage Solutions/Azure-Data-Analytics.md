@@ -17,6 +17,7 @@
 4. [Azure Data Factory](#4-azure-data-factory)
 5. [Azure Databricks](#5-azure-databricks)
 6. [Azure Stream Analytics](#6-azure-stream-analytics)
+6a. [Azure Data Explorer (Kusto)](#6a-azure-data-explorer-kusto)
 7. [Azure HDInsight](#7-azure-hdinsight)
 8. [Data Architecture Patterns](#8-data-architecture-patterns)
 9. [Data Governance](#9-data-governance)
@@ -536,6 +537,51 @@ GROUP BY UserId, SessionWindow(minute, 5)
 | **VS Code local** | Develop and test locally |
 
 > 🎯 **AZ-305 Tip:** Stream Analytics is the answer for "real-time" + "SQL-based" + "low code." If the scenario needs complex Spark Streaming logic, use Databricks Structured Streaming instead.
+
+---
+
+## 6a. Azure Data Explorer (Kusto)
+
+### Overview
+
+Azure Data Explorer (ADX) is a fully managed analytics service optimized for high-volume, time-series, and log/telemetry analytics using **Kusto Query Language (KQL)**.
+
+### Core Design Scenarios
+
+| Scenario | Why ADX Fits |
+|----------|--------------|
+| Application/security log analytics | Fast ingestion + sub-second KQL queries on large data volumes |
+| IoT telemetry exploration | Time-series analytics with windowing and anomaly detection support |
+| Interactive operational dashboards | Low-latency aggregations for near real-time visualization |
+| Ad hoc investigation over large historical data | High compression and optimized columnar storage |
+
+### Event Hubs as Ingestion Backbone
+
+| Event Hubs Design Area | Recommendation |
+|------------------------|----------------|
+| Throughput sizing | Start with projected ingress MB/s and partition count; scale via Throughput Units (Standard) or Capacity Units (Dedicated) |
+| Partition strategy | Use stable keys (deviceId/tenantId) to preserve ordering per key and parallelize consumers |
+| Retention | Keep short-to-medium retention in Event Hubs, land long-term analytics data in ADX/ADLS |
+| Consumer isolation | Use separate consumer groups for Stream Analytics, ADX, and downstream processors |
+| Protocol requirements | Use Event Hubs Kafka endpoint when Kafka clients are required |
+
+### ADX + Event Hubs Reference Pattern
+
+```
+Producers (apps/devices/services)
+        │
+        ▼
+   Azure Event Hubs
+        │  (consumer group: adx-ingest)
+        ▼
+ Azure Data Explorer (KQL)
+        │
+        ├── Dashboards / Power BI
+        ├── Alerting / automation
+        └── Export to ADLS for long-term archive
+```
+
+> 🎯 **AZ-305 Tip:** If the question emphasizes **KQL**, **log/telemetry analytics**, or **interactive time-series investigation at scale**, prefer Azure Data Explorer (or Fabric Real-Time Analytics) with Event Hubs as the ingestion front door.
 
 ---
 

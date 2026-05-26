@@ -190,11 +190,12 @@ Cosmos DB Account
 | E-commerce orders | `customerId` | `orderStatus` | High cardinality, natural query filter |
 | Social media posts | `userId` | `category` | Distributes evenly |
 
-### Hierarchical Partition Keys (Preview → GA)
+### Hierarchical Partition Keys (GA)
 
 Allows up to 3 levels: e.g., `TenantId` → `UserId` → `SessionId`
 - Enables sub-partitioning for more granular distribution
 - Useful for multi-tenant scenarios with large tenants
+- Now generally available for production design patterns across supported APIs/regions
 
 ### Hot Partition Detection & Mitigation
 

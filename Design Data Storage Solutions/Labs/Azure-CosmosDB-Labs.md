@@ -21,6 +21,53 @@ az provider register --namespace Microsoft.Synapse
 
 ---
 
+## Infrastructure as Code Starter Templates (Bicep & Terraform)
+
+Use these templates to deploy a repeatable Cosmos DB base environment for labs.
+
+```bicep
+param location string = resourceGroup().location
+param accountName string
+
+resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
+  name: accountName
+  location: location
+  kind: 'GlobalDocumentDB'
+  properties: {
+    databaseAccountOfferType: 'Standard'
+    locations: [
+      {
+        locationName: location
+        failoverPriority: 0
+        isZoneRedundant: false
+      }
+    ]
+    consistencyPolicy: {
+      defaultConsistencyLevel: 'Session'
+    }
+  }
+}
+```
+
+```hcl
+resource "azurerm_cosmosdb_account" "lab" {
+  name                = var.cosmos_account_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  offer_type          = "Standard"
+  kind                = "GlobalDocumentDB"
+  consistency_policy {
+    consistency_level = "Session"
+  }
+  geo_location {
+    location          = var.location
+    failover_priority = 0
+  }
+}
+```
+
+---
+
 ## Lab 1: Create Cosmos DB Account with NoSQL API
 
 ### Objective

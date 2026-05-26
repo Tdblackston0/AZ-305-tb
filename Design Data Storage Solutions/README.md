@@ -1,6 +1,6 @@
 # 🗄️ AZ-305: Design Data Storage Solutions
 
-> **Exam Domain Weight: 15–20%** of the AZ-305 exam focuses on designing data storage solutions.
+> **Exam Domain Weight: 20–25%** of the AZ-305 exam focuses on designing data storage solutions.
 
 ## Overview
 

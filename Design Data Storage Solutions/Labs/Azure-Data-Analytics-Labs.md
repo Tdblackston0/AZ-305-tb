@@ -12,6 +12,7 @@
 
 ## Table of Contents
 
+0. [Infrastructure as Code Starter Templates (Bicep & Terraform)](#infrastructure-as-code-starter-templates-bicep--terraform)
 1. [Lab 1: Data Lake Storage Gen2 with Medallion Architecture](#lab-1-data-lake-storage-gen2-with-medallion-architecture)
 2. [Lab 2: Azure Synapse Analytics Workspace](#lab-2-azure-synapse-analytics-workspace)
 3. [Lab 3: Azure Data Factory Pipeline](#lab-3-azure-data-factory-pipeline)
@@ -20,6 +21,56 @@
 6. [Lab 6: Microsoft Purview Data Governance](#lab-6-microsoft-purview-data-governance)
 7. [Lab 7: Synapse Link for Cosmos DB (End-to-End)](#lab-7-synapse-link-for-cosmos-db-end-to-end)
 8. [Lab 8: Microsoft Fabric Lakehouse (Overview Lab)](#lab-8-microsoft-fabric-lakehouse-overview-lab)
+
+---
+
+## Infrastructure as Code Starter Templates (Bicep & Terraform)
+
+Use these templates to bootstrap core analytics lab resources before running detailed steps.
+
+```bicep
+param location string = resourceGroup().location
+param storageAccountName string
+param workspaceName string
+
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    isHnsEnabled: true
+  }
+}
+
+resource adf 'Microsoft.DataFactory/factories@2018-06-01' = {
+  name: workspaceName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+}
+```
+
+```hcl
+resource "azurerm_storage_account" "datalake" {
+  name                     = var.storage_account_name
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+  is_hns_enabled           = true
+}
+
+resource "azurerm_data_factory" "lab" {
+  name                = var.data_factory_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+```
 
 ---
 
