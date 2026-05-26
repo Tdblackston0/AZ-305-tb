@@ -520,6 +520,53 @@ Use recovery plans for:
 - Use **multi-VM consistency** for workloads like app + DB tiers needing crash-consistent aligned recovery points.
 - It improves coordinated recovery but can increase replication overhead.
 
+#### When to use multi-VM consistency groups
+| Scenario | Use multi-VM consistency? | Reason |
+|---|---|---|
+| Multi-tier app (web + app + DB VMs) | **Yes** | Ensures all tiers recover to the same point in time |
+| Independent microservices | **No** | Each service can recover independently |
+| Clustered workloads (e.g., SQL Always On) | **Yes** | Cluster nodes must be consistent at failover |
+| Shared-nothing architecture | **No** | VMs have no shared state dependencies |
+
+#### Configuration steps
+1. **Create a replication policy** with multi-VM consistency enabled
+2. **Add VMs to a replication group** — all VMs in the group share crash-consistent recovery points
+3. **Configure recovery plan** to orchestrate failover order and dependencies
+
+```bash
+# Enable replication with multi-VM consistency using Azure CLI
+# First, create or update replication policy with multi-VM consistency
+az site-recovery policy create \
+  --name "multi-vm-policy" \
+  --resource-group rg-dr-vault \
+  --vault-name rsv-dr-eastus \
+  --provider-specific-input '{
+    "instanceType": "A2A",
+    "multiVmSyncStatus": "Enable",
+    "appConsistentFrequencyInMinutes": 60,
+    "crashConsistentFrequencyInMinutes": 5,
+    "recoveryPointHistory": 1440
+  }'
+```
+
+```powershell
+# PowerShell: Create multi-VM consistency replication policy
+$vault = Get-AzRecoveryServicesVault -ResourceGroupName "rg-dr-vault" -Name "rsv-dr-eastus"
+Set-AzRecoveryServicesAsrVaultContext -Vault $vault
+
+New-AzRecoveryServicesAsrPolicy `
+  -Name "multi-vm-policy" `
+  -ReplicationProvider "A2A" `
+  -RecoveryPointRetentionInHours 24 `
+  -ApplicationConsistentSnapshotFrequencyInHours 1 `
+  -MultiVmSyncStatus "Enable"
+
+# Associate VMs with the same replication group for consistency
+# Specify the same -ReplicationGroupName for all VMs that should fail over together
+```
+
+> 💡 **AZ-305 Tip:** Multi-VM consistency is the correct answer when the scenario describes **multi-tier applications** or **clustered workloads** that must recover together. If the scenario mentions **independent microservices** or **stateless web frontends**, individual VM protection without consistency groups is simpler and more cost-effective.
+
 ### Command snapshot
 
 ```bash

@@ -366,6 +366,9 @@ Azure SQL Database and SQL Managed Instance include automated backups by design.
 
 - **PITR** supports restore to a specific point in time within the retention window.
 - Retention is commonly **7 to 35 days**, depending on configuration/service tier.
+  - **Basic tier:** 7 days maximum PITR retention
+  - **Standard/Premium tiers:** 7 to 35 days configurable PITR retention
+  - **Hyperscale tier:** 7 days default, configurable up to 35 days
 - SQL service handles full, differential, and log backups under the platform.
 
 ### Long-term retention (LTR)
@@ -686,6 +689,7 @@ Backup architecture decisions are really **resilience decisions**: choose the ba
 | **Selective disk backup** | Exclude rebuildable or non-critical disks | Never exclude a disk required for app recovery |
 | **Scope of protection** | Back up the data source that matters most (disk vs VM vs database) | Over-protecting whole machines can waste money |
 | **Workload tiering** | Give prod stronger redundancy and longer retention than dev/test | One-size-fits-all backup policies are usually inefficient |
+| **Archive tier for LTR** | Move long-term retention recovery points to Archive tier for significant storage cost savings | Retrieval from Archive takes hours (standard) to 15 hours (bulk); plan for rehydration time |
 
 ### Practical Optimization Patterns
 
@@ -693,6 +697,31 @@ Backup architecture decisions are really **resilience decisions**: choose the ba
 - Choose **SQL workload backup** instead of VM-only backup when database recovery precision matters.
 - Use **native service backup** where available instead of layering unnecessary vault complexity.
 - Review **instant restore**, **GRS**, and **long retention** together because those are common backup cost multipliers.
+- Consider **Archive tier** for long-term retention (LTR) recovery points that are rarely accessed — can reduce storage costs by up to 50% compared to standard vault tier.
+
+### Archive Tier for Long-Term Retention
+
+Azure Backup supports moving recovery points to a lower-cost **Archive tier** for workloads with extended retention requirements.
+
+| Aspect | Details |
+|---|---|
+| **Supported workloads** | Azure VMs, SQL Server in Azure VMs, SAP HANA in Azure VMs |
+| **Minimum retention** | Recovery points must be retained for at least 180 days in Archive tier |
+| **Cost savings** | Up to 50% reduction compared to standard vault storage |
+| **Retrieval options** | Standard (up to 15 hours) or High Priority (up to 1 hour, higher cost) |
+| **Best use cases** | Compliance/audit backups, rarely accessed yearly retention points, cost-sensitive LTR |
+
+**When to use Archive tier:**
+- Recovery points retained for **compliance or audit** that are unlikely to be restored frequently
+- **Yearly** retention points in GFS schemes
+- Workloads where occasional **hours-long restore time** is acceptable
+
+**When NOT to use Archive tier:**
+- Recovery points that may need **fast operational restore**
+- Workloads with **stringent RTO requirements**
+- Frequently accessed weekly or monthly recovery points
+
+> 💡 **AZ-305 Tip:** If a scenario mentions **7-year retention**, **audit compliance**, and **cost optimization** together, consider Archive tier as part of the design. Remember to factor in the rehydration time when evaluating RTO.
 
 > 💡 **AZ-305 Tip:** The cheapest design is not always the best answer — but the exam often rewards the **least expensive design that still meets stated RPO, RTO, retention, and compliance requirements**.
 

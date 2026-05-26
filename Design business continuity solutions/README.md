@@ -49,6 +49,7 @@
 | **SQL Database geo-replication** | Database DR/HA | Cross-region SQL failover and readable secondary replicas | Typically seconds | Seconds to minutes | Up to **99.995%** for database availability tiers |
 | **Cosmos DB multi-region** | Globally distributed database | Low-latency multi-region reads/writes with automatic failover | Near-zero to seconds depending on consistency/write model | Seconds | Up to **99.999%** for multi-region accounts |
 | **AKS multi-region** | Container platform resiliency | Regional or multi-region Kubernetes app continuity | App/data dependent | Minutes to hours unless fully active-active | Depends on AKS tier + workload architecture |
+| **Azure Business Continuity Center** | Unified management | Single pane for backup, DR, and business continuity across Azure and hybrid resources | N/A | N/A | Preview feature |
 
 ### Fast memory map
 
@@ -62,6 +63,21 @@
 | Durable storage across regions | **GRS / RA-GRS / GZRS** |
 | SQL cross-region failover | **Failover groups / active geo-replication** |
 | Global distributed NoSQL continuity | **Cosmos DB multi-region** |
+| Unified BC management dashboard | **Azure Business Continuity Center** |
+
+### Azure Business Continuity Center (Emerging Feature)
+
+**Azure Business Continuity Center** is a unified management experience that consolidates backup, disaster recovery, and business continuity capabilities across Azure and hybrid environments in a single dashboard.
+
+| Capability | Description |
+|---|---|
+| **Unified view** | Single pane of glass for all backup and DR resources across subscriptions |
+| **Protection status** | At-a-glance visibility into protected vs unprotected resources |
+| **Compliance monitoring** | Track backup and DR policy adherence across the organization |
+| **Cross-service insights** | Combines Azure Backup, Azure Site Recovery, and native service protection data |
+| **Actionable recommendations** | Identifies gaps in protection coverage |
+
+> 💡 **AZ-305 Note:** Azure Business Continuity Center is currently in **preview**. For the exam, focus on Recovery Services Vault, Backup Vault, and Azure Site Recovery as the primary management controls. Be aware that Microsoft is evolving toward unified management experiences for enterprise-scale business continuity.
 
 ---
 

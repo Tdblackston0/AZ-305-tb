@@ -713,7 +713,7 @@ param secondaryServer string
 param location string = 'eastus2'
 param secondaryLocation string = 'centralus'
 
-resource primary 'Microsoft.Sql/servers@2022-05-01-preview' = {
+resource primary 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: primaryServer
   location: location
   properties: {
@@ -722,7 +722,7 @@ resource primary 'Microsoft.Sql/servers@2022-05-01-preview' = {
   }
 }
 
-resource secondary 'Microsoft.Sql/servers@2022-05-01-preview' = {
+resource secondary 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: secondaryServer
   location: secondaryLocation
   properties: {
@@ -1023,7 +1023,7 @@ Traffic Manager is best when the requirement is **global DNS routing** rather th
 ### IaC Implementation
 #### Bicep
 ```bicep
-resource tm 'Microsoft.Network/trafficManagerProfiles@2022-04-01' = {
+resource tm 'Microsoft.Network/trafficManagerProfiles@2022-04-01-preview' = {
   name: 'tm-dr-profile'
   location: 'global'
   properties: {
