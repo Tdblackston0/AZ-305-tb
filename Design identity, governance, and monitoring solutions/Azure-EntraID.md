@@ -152,6 +152,40 @@ Microsoft Entra ID is **Microsoft's cloud identity and access management platfor
   - **B2B cross-tenant**: collaboration across separate workforce tenants.
 - Azure subscriptions trust a tenant for identity.
 
+### Administrative Units
+Administrative units are logical containers that enable **delegated administration** for specific subsets of users, groups, and devices.
+
+**When to use:**
+- Large organizations with regional or departmental IT teams
+- Delegated help desk scenarios (password resets for specific users only)
+- Schools or universities with faculty/student separation
+- Multi-location organizations needing scoped administration
+
+**Key concepts:**
+- Administrative units do **not** provide access to Azure resources (use RBAC for that)
+- Users/groups/devices can belong to multiple administrative units
+- Scoped roles are assigned at the administrative unit level
+- Requires **Entra ID P1** or higher
+
+| Scoped Role | What It Can Do Within the AU |
+|---|---|
+| User Administrator | Manage users, reset passwords |
+| Groups Administrator | Manage groups |
+| Helpdesk Administrator | Reset passwords for non-admin users |
+| License Administrator | Assign licenses |
+
+```powershell
+Connect-MgGraph -Scopes "AdministrativeUnit.ReadWrite.All"
+# Create an administrative unit
+New-MgDirectoryAdministrativeUnit -DisplayName "Seattle Office" -Description "Users in Seattle"
+# Add a user to the AU
+New-MgDirectoryAdministrativeUnitMemberByRef -AdministrativeUnitId <au-id> -BodyParameter @{
+    "@odata.id" = "https://graph.microsoft.com/v1.0/users/<user-id>"
+}
+```
+
+**Exam point:** If the scenario mentions **delegated administration**, **scoped help desk**, or **regional IT teams**, think **Administrative Units**.
+
 ### Quick commands
 
 ```powershell
@@ -161,7 +195,9 @@ Get-MgUser -Top 5
 ```
 
 ```powershell
-# Legacy module still seen in older docs/exams
+# ⚠️ DEPRECATED - AzureAD module retiring March 2025
+# Use Microsoft Graph PowerShell (Microsoft.Graph) instead
+# Shown here for exam awareness only
 Connect-AzureAD
 Get-AzureADTenantDetail
 Get-AzureADUser -Top 5
@@ -319,6 +355,30 @@ Conditional Access is the **policy engine** that evaluates signals and applies a
 | Access controls | Grant or block access; require MFA, compliant device, hybrid join, terms of use |
 | Session controls | Restrict session behavior with app enforced restrictions, sign-in frequency, CAE-related controls |
 
+### Continuous Access Evaluation (CAE)
+CAE provides near real-time token revocation and session enforcement beyond traditional token lifetime.
+
+**How it works:**
+- Critical events (user disabled, password changed, admin revokes sessions, high-risk detected) trigger immediate session reevaluation
+- Supported Microsoft 365 apps and Graph API-enabled clients respond to CAE signals
+- Extends session security without requiring shorter token lifetimes
+
+**Key benefits:**
+- **Near real-time enforcement**: Token revocation happens within minutes instead of waiting for token expiry
+- **Location enforcement**: IP-based location policies are continuously evaluated
+- **Critical event response**: Immediate action on security-relevant changes
+
+| CAE Event | Action Taken |
+|---|---|
+| User account disabled/deleted | Session terminated |
+| Password changed/reset | Session terminated |
+| MFA enabled for user | Session reevaluated |
+| Admin explicitly revokes tokens | All sessions terminated |
+| User risk elevated (with Identity Protection) | Session reevaluated |
+| Network location changes outside trusted IP | Policy reevaluated |
+
+**Exam point:** If the scenario asks for **immediate session revocation** or **real-time policy enforcement**, think **CAE**, not just shorter token lifetimes.
+
 ### Common policy patterns
 - Require MFA for admins.
 - Require MFA for all users outside trusted locations.
@@ -373,7 +433,7 @@ az rest --method GET \
 ```
 
 ```powershell
-# Legacy awareness only
+# ⚠️ DEPRECATED - AzureAD module retiring March 2025
 Connect-AzureAD
 Get-AzureADMSConditionalAccessPolicy
 ```
@@ -653,7 +713,7 @@ Get-MgServicePrincipal -Filter "displayName eq 'contoso-api'"
 ```
 
 ```powershell
-# Legacy awareness
+# ⚠️ DEPRECATED - AzureAD module retiring March 2025
 Connect-AzureAD
 New-AzureADApplication -DisplayName "contoso-api"
 New-AzureADServicePrincipal -AppId <appId>
@@ -666,9 +726,10 @@ New-AzureADServicePrincipal -AppId <appId>
 <a id="9-hybrid-identity"></a>
 ## 9. Hybrid Identity
 
-### Azure AD Connect vs Azure AD Connect Cloud Sync
+### Microsoft Entra Connect vs Entra Cloud Sync
+> **Note:** Formerly known as Azure AD Connect and Azure AD Connect Cloud Sync. Microsoft documentation may still use older terminology.
 
-| Area | Azure AD Connect | Cloud Sync |
+| Area | Microsoft Entra Connect | Entra Cloud Sync |
 |---|---|---|
 | Engine location | Full sync engine on server | Lightweight agents |
 | Complexity | Higher | Lower |
@@ -749,7 +810,7 @@ New-MgInvitation -InvitedUserEmailAddress partner@fabrikam.com \
 ```
 
 ```powershell
-# Legacy awareness
+# ⚠️ DEPRECATED - AzureAD module retiring March 2025
 Connect-AzureAD
 New-AzureADMSInvitation -InvitedUserEmailAddress partner@fabrikam.com -InviteRedirectUrl "https://myapps.microsoft.com"
 ```
@@ -767,6 +828,37 @@ New-AzureADMSInvitation -InvitedUserEmailAddress partner@fabrikam.com -InviteRed
 ### B2B direct connect
 - Designed for deeper cross-tenant collaboration scenarios, including Microsoft Teams shared channels.
 - Different from standard guest invitation model.
+
+### Cross-Tenant Synchronization
+Cross-tenant synchronization automates B2B user provisioning across tenants in multi-tenant organizations.
+
+**When to use:**
+- Mergers and acquisitions requiring user provisioning across tenants
+- Multi-national organizations with separate regional tenants
+- Subsidiaries that need access to parent company resources
+- Large-scale B2B collaboration requiring automated provisioning
+
+**Key features:**
+- Automates the creation and management of B2B collaboration users
+- Users appear as **members** (not guests) in the target tenant with `userType = Member`
+- Supports attribute mapping and scoping filters
+- Integrates with cross-tenant access policies
+
+| Aspect | Standard B2B Invitation | Cross-Tenant Sync |
+|---|---|---|
+| Scale | Individual invitations | Bulk automated provisioning |
+| User management | Manual lifecycle | Automated sync/deprovision |
+| User type | Guest | Member (configurable) |
+| Best for | Ad-hoc collaboration | Multi-tenant organizations |
+
+```powershell
+# Configure cross-tenant sync (requires Graph API)
+Connect-MgGraph -Scopes "Policy.ReadWrite.CrossTenantAccess"
+# Cross-tenant access policies and sync configuration are managed via Microsoft Entra admin center
+# or Microsoft Graph API
+```
+
+**Exam point:** If the scenario mentions **multi-tenant organization**, **merger/acquisition**, or **automated B2B provisioning at scale**, think **cross-tenant synchronization**.
 
 **Exam point:** partners accessing **your apps/resources** = usually **B2B**, not B2C.
 
