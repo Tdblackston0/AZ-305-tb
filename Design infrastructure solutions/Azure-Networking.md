@@ -1,15 +1,143 @@
+﻿<a id="top"></a>
+# Azure Networking - AZ-305 Comprehensive Cheat Sheet
+
 > 📝 **Hands-On Labs:** [Networking Labs](./Labs/Azure-Networking-Labs.md)
 
-# Azure Networking Cheat Sheet + AZ-305 Exam Prep
+> 🎯 **Exam Focus:** AZ-305 tests your ability to **design** network topologies and select the right connectivity, security, and traffic distribution services.
 
-**Audience:** Senior Cloud Solution Architect  
-**Primary exam domain:** Design infrastructure solutions (30-35%)  
-**Secondary domains:** Identity, governance, and monitoring; business continuity  
-**Use this for:** fast revision, architecture decisions, command recall, and scenario-based exam thinking
+## Table of Contents
+
+- [Azure Networking Family Overview](#1-azure-networking-family-overview)
+- [When to Choose Which — Decision Tree](#2-when-to-choose-which-decision-tree)
+- [Virtual Networks (VNet)](#3-virtual-networks-vnet)
+- [Network Security](#4-network-security)
+- [Load Balancing Services](#5-load-balancing-services)
+- [Hybrid Connectivity](#6-hybrid-connectivity)
+- [Private Connectivity](#7-private-connectivity)
+- [DNS](#8-dns)
+- [Network Monitoring](#9-network-monitoring)
+- [Availability & Resilience](#10-availability-resilience)
+- [Cost Optimization](#11-cost-optimization)
+- [AZ-305 Decision Scenarios](#12-az-305-decision-scenarios)
+- [Quick Reference Trigger Table](#13-quick-reference-trigger-table)
+- [Common Exam Traps](#14-common-exam-traps)
+- [Final AZ-305 Exam Tips](#15-final-az-305-exam-tips)
+- [Architecture Decision Flowchart](#16-architecture-decision-flowchart)
+- [Exam-Style Review Questions](#17-exam-style-review-questions)
 
 ---
 
-## 1. Azure Networking Overview
+<a id="1-azure-networking-family-overview"></a>
+## 1. Azure Networking Family Overview
+
+Azure networking decisions on AZ-305 usually come down to five design questions: **scope** (subnet, VNet, region, global), **protocol** (TCP/UDP vs HTTP/S), **trust boundary** (public, private, inspected), **connectivity path** (Azure-only, hybrid, branch), and **resilience target** (zone, region, global). Start with the service family, then refine the exact SKU and topology.
+
+### Comparison Table
+
+| Service | Primary role | Scope | Best when | Watch out for |
+|---|---|---|---|---|
+| **VNet** | Private network boundary | Regional | You need isolation, subnets, routing, peering | Overlapping CIDR blocks break future connectivity |
+| **NSG** | Stateful L3/L4 filtering | Subnet/NIC | You need low-cost segmentation and deny/allow rules | No advanced L7 inspection or TLS awareness |
+| **Azure Firewall** | Central managed firewall | Regional hub / Virtual WAN | You need centralized egress, DNAT, threat intel, TLS inspection | Higher cost than NSGs; route design matters |
+| **Application Gateway** | Regional L7 reverse proxy | Regional | You need path-based routing, SSL offload, WAF | HTTP/S only; not for generic TCP/UDP |
+| **Load Balancer** | Regional L4 load balancing | Regional | You need TCP/UDP balancing for public or internal endpoints | No URL routing or WAF features |
+| **Front Door** | Global edge HTTP/S delivery | Global | You need anycast entry, acceleration, global failover, edge WAF | HTTP/S only; not a private east-west service |
+| **Traffic Manager** | DNS-based endpoint selection | Global | You need simple global failover for any protocol | DNS caching slows failover visibility |
+| **Private Link** | Private PaaS/service access | Regional with hybrid reach | You must use private IPs and disable public exposure | DNS is part of the design, not optional |
+| **ExpressRoute** | Private dedicated hybrid connectivity | Hybrid / global enterprise | You need predictable private connectivity and compliance | More expensive and slower to provision than VPN |
+| **VPN Gateway** | Encrypted internet-based connectivity | Hybrid / branch / user | You need fast, flexible hybrid or remote-user access | Throughput and SLA lower than ExpressRoute |
+| **Virtual WAN** | Managed transit networking | Global / multi-branch | You need many sites, regions, and centralized routing at scale | Less customizable than self-built hub-spoke |
+
+### Virtual Network (VNet)
+A VNet is Azure's logical private network boundary for IP planning, segmentation, routing, peering, and service placement. It is the starting point when the design requires subnet isolation, private east-west communication, or a landing zone foundation.
+
+**Real-World Examples:**
+- A **global retailer** allocates separate hub and spoke VNets per region so stores, e-commerce apps, and shared security services stay isolated but connected.
+- A **healthcare provider** places web, app, data, and management tiers in separate subnets inside one VNet to enforce least-privilege east-west access.
+- A **merging enterprise** reserves large non-overlapping VNet ranges in Azure to avoid address conflicts with future acquired networks.
+
+### Network Security Group (NSG)
+An NSG is a stateful packet-filtering policy applied at the subnet or NIC level to allow or deny traffic based on source, destination, protocol, and port. Use it for baseline micro-segmentation and deny-by-default controls close to the workload.
+
+**Real-World Examples:**
+- A **three-tier application** allows HTTPS from the web subnet to the app subnet and SQL only from the app subnet to the data subnet.
+- A **regulated finance workload** denies outbound internet access from database subnets while still allowing backup traffic to approved service tags.
+- A **shared services platform** uses NSGs on spoke subnets so only the Bastion and management subnet can reach VM admin ports.
+
+### Azure Firewall
+Azure Firewall is a fully managed, centralized, stateful firewall for hub-based or secured virtual hub architectures. It is best when you must control outbound internet access, centralize DNAT, or apply threat-intelligence and TLS-inspection policies across many spokes.
+
+**Real-World Examples:**
+- An **enterprise landing zone** forces all spoke outbound internet traffic through a hub firewall for FQDN filtering and audit logging.
+- A **payment-processing environment** uses Azure Firewall Premium for TLS inspection and IDPS before traffic reaches card-processing APIs.
+- A **manufacturing company** centralizes branch-to-cloud inspection through a secured Virtual WAN hub with Azure Firewall policies.
+
+### Application Gateway
+Application Gateway is a regional Layer 7 load balancer and reverse proxy for HTTP/S applications. Choose it when you need URL/path-based routing, host-based routing, SSL termination, cookie affinity, or integrated WAF in a single Azure region.
+
+**Real-World Examples:**
+- An **insurance portal** routes `/claims` and `/billing` to different backend pools while publishing a single public endpoint.
+- A **B2B SaaS provider** hosts multiple customer domains on one gateway using host-header routing and separate TLS certificates.
+- A **government web app** uses WAF mode to block OWASP attacks before traffic reaches private application servers.
+
+### Azure Load Balancer
+Azure Load Balancer is a Layer 4 service for distributing TCP/UDP traffic across healthy instances. It is the right answer for non-HTTP workloads, internal tier balancing, or high-performance regional front ends where application-aware routing is unnecessary.
+
+**Real-World Examples:**
+- A **SQL Server Always On listener** uses an internal load balancer to present a single private endpoint to application servers.
+- A **legacy ERP farm** publishes TCP-based application servers behind a public Standard Load Balancer.
+- A **high-scale network virtual appliance pair** uses HA Ports on an internal load balancer to process east-west flows.
+
+### Azure Front Door
+Azure Front Door is Microsoft's global edge application delivery platform for HTTP/S workloads. It provides an anycast entry point, global load balancing, acceleration, WAF, caching, and failover across regions.
+
+**Real-World Examples:**
+- A **multi-region e-commerce platform** sends shoppers to the closest healthy region and fails over automatically during a regional outage.
+- A **media site** uses edge caching and WAF at Front Door to reduce origin load and improve page performance worldwide.
+- A **private App Service deployment** exposes global web traffic through Front Door Premium with Private Link origins.
+
+### Traffic Manager
+Traffic Manager is a DNS-based global traffic distribution service that returns the best endpoint in DNS responses based on routing rules. It works for almost any endpoint type and protocol, but it does not proxy traffic.
+
+**Real-World Examples:**
+- A **global API provider** uses priority routing so a secondary region is returned only if the primary region fails health checks.
+- A **gaming company** uses performance routing to send players to the lowest-latency regional service endpoint.
+- A **hybrid application** returns either an Azure endpoint or an on-premises endpoint because the workload is not HTTP/S and cannot use Front Door.
+
+### Private Link
+Private Link exposes Azure PaaS services or customer services through private IP addresses in your VNet using Private Endpoints. It is the preferred choice when the design requires private-only access, data exfiltration control, and hybrid reach without public endpoints.
+
+**Real-World Examples:**
+- A **bank** disables public access to Azure SQL and forces all app traffic through a Private Endpoint with private DNS resolution.
+- A **research lab** publishes an internal SaaS service to partner subscriptions through Private Link Service instead of over the public internet.
+- An **enterprise data platform** allows on-prem users to access a Storage account privately over ExpressRoute using Private Endpoints and DNS forwarding.
+
+### ExpressRoute
+ExpressRoute provides private, dedicated connectivity between on-premises environments and Microsoft cloud services. It is the premium hybrid option when the scenario emphasizes predictable latency, compliance, or keeping traffic off the public internet.
+
+**Real-World Examples:**
+- A **large bank** connects its datacenters to Azure over redundant ExpressRoute circuits for core payment workloads.
+- A **pharmaceutical company** uses ExpressRoute Direct for very high-throughput data ingestion from lab systems into Azure analytics platforms.
+- A **multinational enterprise** uses Global Reach so geographically separate offices can exchange traffic over Microsoft's backbone.
+
+### VPN Gateway
+VPN Gateway provides encrypted connectivity over the internet for site-to-site, point-to-site, and VNet-to-VNet scenarios. It is ideal when you need faster deployment or lower cost than ExpressRoute and can tolerate internet-based characteristics.
+
+**Real-World Examples:**
+- A **small branch office** connects to Azure over a site-to-site VPN while waiting for long-term WAN upgrades.
+- A **remote workforce** connects securely to private Azure apps over point-to-site OpenVPN.
+- A **disaster recovery design** uses VPN Gateway as backup connectivity if the primary ExpressRoute path fails.
+
+### Virtual WAN
+Virtual WAN is a managed Microsoft service for large-scale branch, user, and Azure transit networking. It simplifies multi-region and multi-branch connectivity by integrating hubs, routing, VPN, ExpressRoute, and security services under one control plane.
+
+**Real-World Examples:**
+- A **retail chain with hundreds of stores** connects branches globally through managed Virtual WAN hubs instead of building many custom hub VNets.
+- A **professional services firm** centralizes remote-user VPN, branch VPN, and Azure VNet connectivity in one managed routing architecture.
+- A **global manufacturer** adds Azure Firewall to secured virtual hubs so branch internet egress is inspected consistently worldwide.
+
+### Preserved networking overview guidance
+### Original Azure Networking Overview (preserved)
 
 Azure networking for AZ-305 is about choosing the **right traffic path, trust boundary, and control plane** for each workload. The exam is less about memorizing every SKU and more about understanding **when to isolate, inspect, publish, encrypt, and scale**.
 
@@ -65,7 +193,104 @@ Get-AzPublicIpAddress
 
 ---
 
-## 2. Virtual Networks (VNet)
+<a id="2-when-to-choose-which-decision-tree"></a>
+## 2. When to Choose Which — Decision Tree
+
+### Load Balancing Decision Flow
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│                  What traffic are you routing?            │
+└───────────────────────────────┬────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │ HTTP/S                │ Non-HTTP (TCP/UDP)
+                    ▼                       ▼
+        ┌──────────────────────────┐   ┌──────────────────────────┐
+        │ Need a global edge, WAF, │   │ Need regional balancing? │
+        │ acceleration, or caching?│   └──────────────┬───────────┘
+        └──────────────┬───────────┘                  │
+                       │                              │
+             ┌─────────┴─────────┐                    │
+             │ YES               │ NO                 │
+             ▼                   ▼                    ▼
+    ┌──────────────────┐  ┌──────────────────────┐  ┌────────────────────┐
+    │ Azure Front Door │  │ Need path/host-based │  │ Azure Load Balancer│
+    │   (Global L7)    │  │ routing or regional  │  │   (Regional L4)    │
+    └──────────────────┘  │ WAF inside one region?│  └────────────────────┘
+                          └───────────┬───────────┘
+                                      │
+                            ┌─────────┴─────────┐
+                            │ YES               │ NO
+                            ▼                   ▼
+                   ┌────────────────────┐  ┌─────────────────────┐
+                   │ Application Gateway│  │ Traffic Manager if  │
+                   │   (Regional L7)    │  │ DNS-only steering   │
+                   └────────────────────┘  │ is acceptable       │
+                                           └─────────────────────┘
+```
+
+### Connectivity Decision Flow
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│                  What kind of connectivity?               │
+└───────────────────────────────┬────────────────────────────┘
+                                │
+               ┌────────────────┼────────────────┐
+               │                │                │
+               ▼                ▼                ▼
+      Azure-to-Azure      Private access to   Azure-to-on-prem /
+      network design      Azure PaaS/service  branch / users
+               │                │                │
+               ▼                ▼                ▼
+   ┌────────────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
+   │ Need direct, low-  │  │ Must disable     │  │ Need dedicated private  │
+   │ latency private    │  │ public access or │  │ connectivity with high  │
+   │ connectivity?      │  │ use a private IP?│  │ predictability/compliance?│
+   └──────────┬─────────┘  └──────────┬───────┘  └──────────────┬──────────┘
+              │                       │                         │
+     ┌────────┴────────┐      ┌───────┴────────┐        ┌───────┴────────┐
+     │ YES             │ NO   │ YES            │ NO     │ YES            │ NO
+     ▼                 ▼      ▼                ▼        ▼                ▼
+┌──────────────┐  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│ VNet Peering │  │ Virtual  │ │ Private Link │ │ Service      │ │ ExpressRoute │
+│ (or Global   │  │ WAN / Hub│ │ / Private    │ │ Endpoint     │ │              │
+│ Peering)     │  │ design   │ │ Endpoint     │ │              │ └──────┬───────┘
+└──────────────┘  └──────────┘ └──────────────┘ └──────────────┘        │
+                                                                          ▼
+                                                             ┌────────────────────────┐
+                                                             │ Need many branches or  │
+                                                             │ managed global transit?│
+                                                             └───────────┬────────────┘
+                                                                         │
+                                                               ┌─────────┴─────────┐
+                                                               │ YES               │ NO
+                                                               ▼                   ▼
+                                                      ┌────────────────┐  ┌────────────────┐
+                                                      │  Virtual WAN   │  │  VPN Gateway   │
+                                                      │                │  │  (S2S/P2S/V2V) │
+                                                      └────────────────┘  └────────────────┘
+```
+
+### Quick Decision Matrix
+
+| If the requirement says... | Start with... |
+|---|---|
+| Global web entry point, WAF, acceleration | **Azure Front Door** |
+| Regional web reverse proxy, path routing, WAF | **Application Gateway** |
+| Regional TCP/UDP distribution | **Azure Load Balancer** |
+| DNS-based global failover for any protocol | **Traffic Manager** |
+| Private PaaS access with no public endpoint | **Private Link / Private Endpoint** |
+| Dedicated private hybrid connectivity | **ExpressRoute** |
+| Fast, lower-cost encrypted hybrid connectivity | **VPN Gateway** |
+| Many branches and managed transit at scale | **Virtual WAN** |
+
+---
+
+<a id="3-virtual-networks-vnet"></a>
+## 3. Virtual Networks (VNet)
+
 
 ### VNet design: address space planning and CIDR
 
@@ -202,7 +427,8 @@ Add-AzVirtualNetworkPeering -Name "spoke-to-hub" `
 
 ---
 
-## 3. Network Security
+<a id="4-network-security"></a>
+## 4. Network Security
 
 ### Network Security Groups (NSGs)
 
@@ -419,7 +645,8 @@ Enable **DDoS Protection Standard** when the scenario includes:
 
 ---
 
-## 4. Load Balancing Decision Tree
+<a id="5-load-balancing-services"></a>
+## 5. Load Balancing Services
 
 ### Fast decision tree
 
@@ -564,7 +791,8 @@ Use nested profiles for complex global architectures, such as regional grouping 
 
 ---
 
-## 5. Hybrid Connectivity
+<a id="6-hybrid-connectivity"></a>
+## 6. Hybrid Connectivity
 
 ### ExpressRoute
 
@@ -689,7 +917,8 @@ Virtual WAN is a managed networking service for **branch, user, and Azure connec
 
 ---
 
-## 6. Private Connectivity
+<a id="7-private-connectivity"></a>
+## 7. Private Connectivity
 
 ### Private Link & Private Endpoints
 
@@ -793,7 +1022,8 @@ New-AzBastion -ResourceGroupName "rg-network-prod" -Name "bastion-hub-eastus" -P
 
 ---
 
-## 7. DNS
+<a id="8-dns"></a>
+## 8. DNS
 
 ### Azure DNS zones (public)
 
@@ -859,7 +1089,8 @@ New-AzPrivateDnsVirtualNetworkLink -ResourceGroupName "rg-network-prod" -ZoneNam
 
 ---
 
-## 8. Network Monitoring
+<a id="9-network-monitoring"></a>
+## 9. Network Monitoring
 
 ### Network Watcher
 
@@ -922,7 +1153,73 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 
 ---
 
-## 9. AZ-305 Decision Scenarios
+<a id="10-availability-resilience"></a>
+## 10. Availability & Resilience
+
+### Zone Redundancy Design Patterns
+
+| Service / pattern | Resilience choice | AZ-305 design takeaway |
+|---|---|---|
+| **Standard Load Balancer** | Zone-redundant frontend or zonal frontend | Use zone-redundant for shared public/internal entry points when one zone loss must not break access. |
+| **Application Gateway v2** | Multi-instance across zones | Strong regional web tier choice when you need WAF and zone-aware scaling. |
+| **Azure Firewall** | Availability zones + Firewall Policy | Pair with hub-spoke routing and zone-aware deployment for critical egress paths. |
+| **VPN Gateway** | Active-active gateway instances | Default HA answer when hybrid uptime matters. |
+| **ExpressRoute** | Dual circuits, dual providers, diverse peering locations | Think circuit redundancy, not just gateway redundancy. |
+| **Front Door / Traffic Manager** | Multi-region endpoints | Use when one whole region can fail and the app must remain reachable. |
+
+### Multi-Region Networking Strategies
+
+| Scenario | Recommended pattern | Why it works |
+|---|---|---|
+| Global web app with active-active regions | **Front Door + regional App Gateway / app backends** | Gives edge routing, health-based failover, and optional WAF at both global and regional layers. |
+| Any-protocol service with primary/secondary regions | **Traffic Manager + regional endpoints** | DNS steering works even when the backend is not HTTP/S. |
+| Mission-critical hybrid app | **ExpressRoute primary + VPN backup** | Balances private predictable connectivity with a lower-cost failover path. |
+| Enterprise hub-spoke per region | **Regional hubs + global peering / Virtual WAN** | Contains blast radius while keeping regional independence. |
+| Private PaaS dependency across regions | **Private Endpoints per region + DNS failover design** | Avoids a single-region private endpoint dependency. |
+
+### Resilience Checklist
+
+- Design for **zone failure first**, then decide whether the scenario also requires **regional failover**.
+- Prefer **active-active** when the workload has low RTO and can tolerate data replication complexity.
+- Remember that **DNS-based failover is not instant** because client caching still applies.
+- Keep **DNS, routing, and identity dependencies** aligned with failover plans; a private endpoint without private DNS failover is incomplete.
+- For hybrid, the exam often rewards **redundant circuits/gateways/providers** more than a single oversized connection.
+
+---
+
+<a id="11-cost-optimization"></a>
+## 11. Cost Optimization
+
+### Bandwidth and Data Transfer Cost Considerations
+
+| Cost driver | Why it matters | Optimization move |
+|---|---|---|
+| **Internet egress** | Outbound traffic to the internet can dominate cost for public apps and data-heavy workloads. | Use caching, CDN/Front Door, compression, and keep chatty east-west traffic private where possible. |
+| **Inter-region traffic** | Cross-region replication, peering, and app chatter can add significant charges. | Minimize unnecessary cross-region sync, colocate chatty tiers, and use async patterns when latency allows. |
+| **VNet peering egress/ingress** | Peering is fast but not free at scale, especially across regions. | Centralize shared services carefully and avoid sending high-volume data flows through unnecessary peering hops. |
+| **Firewall data processing** | Azure Firewall charges include deployment plus processed traffic. | Send only traffic that truly requires inspection; keep benign east-west flows local when policy allows. |
+| **ExpressRoute pricing model** | Metered vs Unlimited data plans affect long-term hybrid cost. | Choose **Unlimited** when egress is consistently high; choose **Metered** for lighter or bursty use. |
+
+### Reserved Capacity and Commitment-Based Savings
+
+| Service | Savings lever | When to use it |
+|---|---|---|
+| **Azure Firewall** | Reserved capacity | Long-running production firewalls with predictable usage where lower unit cost matters more than short-term flexibility. |
+| **ExpressRoute Direct / circuit commitments** | Port capacity commitment and plan selection | High-throughput enterprise connectivity where steady usage justifies committed spend. |
+| **Front Door / edge acceleration patterns** | Offload origin traffic with caching | Not reserved capacity in the same way, but a major design-time cost reducer for high-read global apps. |
+
+### Cost-Aware Networking Rules of Thumb
+
+- The cheapest secure design is usually **not** the cheapest raw service; balance **security controls, egress volume, and operational overhead**.
+- **Private Endpoint** can reduce exfiltration risk, but it may add DNS and per-endpoint cost — justify it with security and compliance value.
+- **Virtual WAN** simplifies operations at scale, but a small environment may be cheaper with a traditional hub-spoke design.
+- Right-size premium services: use **Front Door, Firewall Premium, ExpressRoute, and WAF** where the scenario truly requires their differentiated capabilities.
+
+---
+
+<a id="12-az-305-decision-scenarios"></a>
+## 12. AZ-305 Decision Scenarios
+
 
 | Scenario | Best answer | Why | Common wrong answer |
 |---|---|---|---|
@@ -953,7 +1250,8 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 
 ---
 
-## 10. Quick Reference Trigger Table
+<a id="13-quick-reference-trigger-table"></a>
+## 13. Quick Reference Trigger Table
 
 | Trigger phrase in question | Best answer / thought |
 |---|---|
@@ -1002,7 +1300,8 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 
 ---
 
-## 11. Common Exam Traps
+<a id="14-common-exam-traps"></a>
+## 14. Common Exam Traps
 
 ### 1. Service Endpoint vs Private Endpoint confusion
 
@@ -1061,7 +1360,21 @@ Get-AzEffectiveRouteTable -NetworkInterfaceName "nic-web01" -ResourceGroupName "
 
 ---
 
-## Final Architecture Checklist
+<a id="15-final-az-305-exam-tips"></a>
+## 🎯 Final AZ-305 Exam Tips
+
+1. Start every networking question by identifying the **protocol**: TCP/UDP usually points to Load Balancer, while HTTP/S opens the door to App Gateway or Front Door.
+2. Separate **regional** and **global** decisions. App Gateway is regional; Front Door and Traffic Manager are global.
+3. If the requirement says **private IP**, **disable public access**, or **minimize exfiltration**, think **Private Endpoint + Private DNS**.
+4. Use **NSG** for baseline segmentation and **Azure Firewall** for centralized inspection; many strong designs intentionally use both.
+5. Remember that **VNet peering is not transitive**. If transit is required, introduce a hub, gateway transit, firewall routing, or Virtual WAN.
+6. When hybrid connectivity must be private and predictable, choose **ExpressRoute**; when speed and cost matter more, choose **VPN Gateway**.
+7. **Traffic Manager** answers with DNS; **Front Door** proxies traffic at the edge. That distinction resolves many exam distractors.
+8. For resilience, think in layers: **zone redundancy**, **active-active gateways**, **dual circuits/providers**, then **multi-region failover**.
+9. Standard SKUs are usually the architecturally correct answer for production networking because they include stronger security and HA capabilities.
+10. Cost questions often hide in architecture questions — watch for **egress**, **cross-region traffic**, **inspection charges**, and **reserved capacity opportunities**.
+
+### Preserved Final Architecture Checklist
 
 Use this mental checklist in the exam:
 
@@ -1074,10 +1387,70 @@ Use this mental checklist in the exam:
 
 ---
 
-## Senior Architect Summary
+<a id="16-architecture-decision-flowchart"></a>
+## 📐 Architecture Decision Flowchart
+
+```text
+Start
+  │
+  ├─► 1. What is the traffic type?
+  │      ├─ HTTP/S ─► Global? ─► Front Door
+  │      │              └─ Regional? ─► Application Gateway
+  │      ├─ TCP/UDP ─► Regional? ─► Load Balancer
+  │      └─ Mixed / branch / private? ─► Continue
+  │
+  ├─► 2. Is the destination PaaS and should it stay private?
+  │      ├─ Yes ─► Private Endpoint + Private DNS
+  │      └─ No  ─► Continue
+  │
+  ├─► 3. Is connectivity hybrid?
+  │      ├─ Dedicated/private/compliance ─► ExpressRoute
+  │      ├─ Internet-based / fast / lower cost ─► VPN Gateway
+  │      └─ Many branches / managed transit ─► Virtual WAN
+  │
+  ├─► 4. Is centralized inspection required?
+  │      ├─ Web threats ─► WAF
+  │      ├─ East-west / egress control ─► Azure Firewall + UDRs
+  │      └─ Simple segmentation ─► NSG + ASG
+  │
+  └─► 5. Add resilience and cost choices
+         ├─ Zone redundancy / active-active / multi-region
+         └─ Optimize egress, peering, reserved capacity, and SKU fit
+```
+
+### Senior Architect Summary
 
 - Default to **hub-spoke**, **private-by-default**, **Standard SKUs**, and **centralized inspection where justified**.
 - For web workloads: separate **global edge**, **regional L7**, and **regional L4** decisions clearly.
 - For PaaS: if security matters, think **Private Endpoint + Private DNS**.
 - For hybrid: choose **ExpressRoute** for enterprise private connectivity and **VPN** for cost/speed/flexibility.
 - For exams: map the requirement to **scope + protocol + trust boundary** before picking the service.
+
+
+---
+
+<a id="17-exam-style-review-questions"></a>
+## Exam-Style Review Questions
+
+1. A company runs a multi-region e-commerce site and needs a single global web endpoint, WAF protection, and fast failover. Which service should sit at the edge, and why is Traffic Manager alone insufficient?  
+   **Answer:** Azure Front Door, because it provides global HTTP/S proxying, WAF, acceleration, and health-based failover; Traffic Manager is DNS-only.
+
+2. A bank must let on-premises apps reach Azure SQL privately and disable all public access. What networking combination best fits the requirement?  
+   **Answer:** Private Endpoint + Private DNS + ExpressRoute or VPN connectivity, because the service needs a private IP path and correct private name resolution.
+
+3. A solution architect needs to distribute TCP traffic across VM appliances inside one Azure region. Why is Application Gateway the wrong choice?  
+   **Answer:** Application Gateway is Layer 7 and HTTP/S-focused; Azure Load Balancer is the correct Layer 4 regional balancing service.
+
+4. An enterprise with hundreds of branches wants managed transit networking and simplified branch onboarding across regions. Which service best fits, and what tradeoff comes with it?  
+   **Answer:** Virtual WAN; the tradeoff is less granular customization than a fully self-managed hub-spoke network.
+
+5. A design requires centralized outbound filtering, threat intelligence, and optional TLS inspection for spoke VNets. Which service tier should you consider first?  
+   **Answer:** Azure Firewall Standard or Premium, with Premium preferred when TLS inspection and IDPS are explicit requirements.
+
+---
+
+## Footer
+
+*Azure Networking for AZ-305: choose by protocol, scope, trust boundary, resilience target, and cost profile. Pair this sheet with the Networking Labs for hands-on reinforcement.*
+
+[Back to top](#top)

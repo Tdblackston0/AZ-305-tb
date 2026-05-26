@@ -1,15 +1,93 @@
+﻿# Microsoft Entra ID - AZ-305 Comprehensive Cheat Sheet
+
 > 📝 **Hands-On Labs:** [Entra ID Labs](./Labs/Azure-EntraID-Labs.md)
 
-# Microsoft Entra ID Cheat Sheet + AZ-305 Exam Prep
+> 🎯 **Exam Focus:** AZ-305 tests your ability to **design** identity solutions with appropriate authentication, authorization, and governance patterns.
 
 **Audience:** Senior Cloud Solution Architect  
-**Exam focus:** AZ-305 - Design identity, governance, and monitoring solutions  
 **Use this for:** fast revision, architecture decisions, and scenario-based exam thinking
+
+## Table of Contents
+
+- [1. Entra ID Family Overview](#1-entra-id-family-overview)
+- [2. When to Choose Which — Decision Tree](#2-when-to-choose-which-decision-tree)
+- [3. Authentication Methods](#3-authentication-methods)
+- [4. Conditional Access](#4-conditional-access)
+- [5. Identity Protection](#5-identity-protection)
+- [6. Privileged Identity Management (PIM)](#6-privileged-identity-management-pim)
+- [7. Managed Identities](#7-managed-identities)
+- [8. Service Principals & App Registrations](#8-service-principals-app-registrations)
+- [9. Hybrid Identity](#9-hybrid-identity)
+- [10. B2B Collaboration](#10-b2b-collaboration)
+- [11. B2C (External Identities)](#11-b2c-external-identities)
+- [12. Entra External ID](#12-entra-external-id)
+- [13. Security Best Practices](#13-security-best-practices)
+- [14. Availability & Resilience](#14-availability-resilience)
+- [15. Cost Optimization](#15-cost-optimization)
+- [16. AZ-305 Decision Scenarios](#16-az-305-decision-scenarios)
+- [17. Quick Reference Trigger Table](#17-quick-reference-trigger-table)
+- [18. Common Exam Traps](#18-common-exam-traps)
+- [19. Command Snippets to Remember](#19-command-snippets-to-remember)
+- [20. 🎯 Final AZ-305 Exam Tips](#20-final-az-305-exam-tips)
+- [21. 📐 Architecture Decision Flowchart](#21-architecture-decision-flowchart)
+- [22. Exam-Style Review Questions](#22-exam-style-review-questions)
 
 ---
 
-## 1. Microsoft Entra ID Overview
+<a id="1-entra-id-family-overview"></a>
+## 1. Entra ID Family Overview
 
+Microsoft identity design questions usually start with one decision: **which identity service family best fits the workload, users, and protocol requirements?** Use this section to separate cloud IAM, legacy domain services, managed domain services, external identity platforms, and workload identities.
+
+| Service | Primary Purpose | Core Protocols / Access Model | Best Fit | AZ-305 Trigger Words |
+|---|---|---|---|---|
+| **Microsoft Entra ID** | Cloud identity, authentication, authorization, SSO, governance | OAuth 2.0, OpenID Connect, SAML, SCIM | Workforce identity, SaaS, Azure, Microsoft 365, Conditional Access | Cloud-first, MFA, Conditional Access, PIM, SSO |
+| **Active Directory Domain Services (AD DS)** | Traditional Windows domain directory | Kerberos, NTLM, LDAP, Group Policy | Legacy apps, domain join, OU/GPO-driven environments | LDAP, Kerberos, GPO, domain controller |
+| **Microsoft Entra Domain Services** | Managed domain services without customer-managed DCs | Kerberos, NTLM, LDAP, domain join | Legacy apps needing domain services in Azure without running DC VMs | Lift-and-shift, managed domain, legacy LDAP |
+| **Microsoft Entra External ID** | External user and customer/partner identity journeys | OpenID Connect, OAuth 2.0, SAML, social identity federation | Customer apps, partner access, modern external identities | Customer sign-up, partner federation, external users |
+| **Managed Identities for Azure Resources** | Secretless workload identity for Azure services | Entra-issued service principal behind the resource | Azure-hosted workloads accessing Azure resources | Key Vault access, no secrets, Azure-hosted app |
+
+### Microsoft Entra ID
+A cloud identity and access management platform for workforce users, devices, applications, and governance. It is the default answer when the scenario emphasizes **modern authentication**, **SSO**, **Conditional Access**, **risk-based access**, or **centralized identity governance** for Microsoft 365, Azure, and SaaS applications.
+
+**Real-World Examples:**
+- A **global consulting firm** uses Entra ID with Conditional Access and MFA to control access to Microsoft 365, Azure, and Salesforce from managed and unmanaged devices.
+- A **healthcare provider** uses Entra ID P2 with Identity Protection and PIM so privileged admins can elevate only when needed and risky sign-ins trigger remediation.
+- A **multi-tenant SaaS vendor** integrates its application with Entra ID so customer employees authenticate using their home tenant credentials.
+
+### Active Directory Domain Services (AD DS)
+A traditional directory service built for Windows domains, legacy authentication, server management, and policy-driven enterprise infrastructure. Choose it when the requirement explicitly depends on **domain controllers**, **LDAP/Kerberos**, **Group Policy**, or older line-of-business applications that cannot use modern cloud identity patterns.
+
+**Real-World Examples:**
+- A **manufacturing company** runs an older ERP application that authenticates with LDAP and requires domain-joined Windows Server instances.
+- A **regional bank** uses AD DS to apply Group Policy, certificate auto-enrollment, and Kerberos-based access controls across branch office desktops.
+- A **hospital imaging platform** depends on Windows-integrated authentication and service accounts tied to domain controllers in a protected network segment.
+
+### Microsoft Entra Domain Services
+A managed domain service that provides domain join, LDAP, Kerberos, and NTLM in Azure without requiring you to deploy or patch domain controller VMs. It fills the gap when a legacy application needs domain capabilities in Azure, but the organization wants a **managed** service instead of full AD DS infrastructure.
+
+**Real-World Examples:**
+- An **insurance company** lifts a legacy IIS application into Azure and uses Entra Domain Services so the app can keep using LDAP binds and domain join.
+- A **government agency** hosts virtual desktops in Azure and needs managed Kerberos/NTLM support without operating domain controllers in every landing zone.
+- A **retail chain** migrates a file-processing application into Azure where the middleware still requires classic domain authentication to reach a legacy SMB share.
+
+### Microsoft Entra External ID
+Microsoft's platform for handling external identities across partner, citizen, and customer-facing scenarios. Choose it when the people signing in are **outside your workforce tenant** and the design requires branded sign-up/sign-in, federation, invitation-based collaboration, or external identity governance.
+
+**Real-World Examples:**
+- A **retailer** builds a consumer shopping application with social sign-in and customer self-service registration.
+- A **law firm** invites partner organizations into collaboration spaces while honoring cross-tenant trust and guest governance requirements.
+- A **public sector portal** allows citizens to register with email or federated identities to access benefit services.
+
+### Managed Identities for Azure Resources
+An Azure-native identity pattern where Azure creates and rotates the credential for the workload automatically. It is the preferred design for Azure-hosted apps that need access to Azure resources without storing passwords, secrets, or certificates.
+
+**Real-World Examples:**
+- An **Azure Function** reads secrets from Key Vault using a system-assigned managed identity instead of a client secret.
+- A **group of Container Apps** shares a user-assigned managed identity so multiple services can access the same Storage account and Service Bus namespace.
+- A **web application** on App Service uses managed identity and RBAC to write blobs and query Azure SQL without embedded credentials.
+
+### Core platform concepts
 Microsoft Entra ID is **Microsoft's cloud identity and access management platform** for workforce, application, device, and external identities. It is **not only "Azure AD renamed"**; the rename reflects a broader identity portfolio under Microsoft Entra, with Entra ID remaining the core cloud directory and policy engine.
 
 ### What it is
@@ -98,7 +176,50 @@ az ad user list --top 5
 
 ---
 
-## 2. Authentication Methods
+<a id="2-when-to-choose-which-decision-tree"></a>
+## 2. When to Choose Which — Decision Tree
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Who needs the identity solution?                            │
+└───────────────┬──────────────────────────────────────────────┘
+                │
+    ┌───────────┼─────────────┬──────────────┬───────────────┐
+    │           │             │              │               │
+    ▼           ▼             ▼              ▼               ▼
+ Workforce   Azure app     External      Customer app    Legacy/domain
+  users      workload      partners      / public users   dependency
+    │           │             │              │               │
+    │           │             │              │               │
+    ▼           ├── YES ──► Managed       ├── YES ──► Entra External ID /
+Modern auth?   │           Identity       │           B2C-style design
+SSO, MFA,      │                          │
+CA, PIM?       └── NO ──► Service         └── NO ──► Entra B2B / cross-tenant
+    │                      Principal /                 collaboration
+    ▼                      Federation
+Microsoft
+Entra ID
+
+If workforce users also need legacy domain protocols:
+Microsoft Entra ID + AD DS or Microsoft Entra Domain Services (for managed domain capabilities)
+```
+
+### Quick Decision Matrix
+
+| Scenario | Recommended Design |
+|---|---|
+| Microsoft 365 or Azure admin access with MFA and governance | **Microsoft Entra ID P1/P2** |
+| Azure-hosted app needs Key Vault, Storage, or SQL access | **Managed identity** |
+| GitHub Actions or external automation needs Azure access | **Federated service principal** |
+| Legacy LDAP/Kerberos-dependent app in Azure | **Entra Domain Services** or **AD DS** |
+| Partner users access your Teams, SharePoint, or internal apps | **Entra B2B** |
+| Consumer-facing app with self-service registration | **Entra External ID / Azure AD B2C pattern** |
+| Existing enterprise needs simplest hybrid sign-in | **Entra ID + Password Hash Sync** |
+
+---
+
+<a id="3-authentication-methods"></a>
+## 3. Authentication Methods
 
 ### Password-based authentication
 **When to use:** legacy compatibility only; avoid as the long-term primary strategy.
@@ -184,7 +305,8 @@ az rest --method GET \
 
 ---
 
-## 3. Conditional Access
+<a id="4-conditional-access"></a>
+## 4. Conditional Access
 
 Conditional Access is the **policy engine** that evaluates signals and applies access controls.
 
@@ -265,7 +387,8 @@ Get-AzureADMSConditionalAccessPolicy
 
 ---
 
-## 4. Identity Protection
+<a id="5-identity-protection"></a>
+## 5. Identity Protection
 
 Identity Protection analyzes signals to detect risky users and risky sign-ins.
 
@@ -316,7 +439,8 @@ az rest --method GET \
 
 ---
 
-## 5. Privileged Identity Management (PIM)
+<a id="6-privileged-identity-management-pim"></a>
+## 6. Privileged Identity Management (PIM)
 
 PIM provides **just-in-time (JIT)** and governed privileged access.
 
@@ -377,7 +501,8 @@ az role definition list --name Owner
 
 ---
 
-## 6. Managed Identities
+<a id="7-managed-identities"></a>
+## 7. Managed Identities
 
 Managed identities are Entra ID identities automatically managed by Azure for workloads.
 
@@ -468,7 +593,8 @@ Modern pattern: **workload identity federation**.
 
 ---
 
-## 7. Service Principals & App Registrations
+<a id="8-service-principals-app-registrations"></a>
+## 8. Service Principals & App Registrations
 
 ### App registration vs enterprise application
 
@@ -537,7 +663,8 @@ New-AzureADServicePrincipal -AppId <appId>
 
 ---
 
-## 8. Hybrid Identity
+<a id="9-hybrid-identity"></a>
+## 9. Hybrid Identity
 
 ### Azure AD Connect vs Azure AD Connect Cloud Sync
 
@@ -599,7 +726,8 @@ az ad device list --top 10
 
 ---
 
-## 9. B2B Collaboration
+<a id="10-b2b-collaboration"></a>
+## 10. B2B Collaboration
 
 ### What it is
 B2B collaboration lets external users access your workforce tenant resources as **guest users**.
@@ -644,7 +772,8 @@ New-AzureADMSInvitation -InvitedUserEmailAddress partner@fabrikam.com -InviteRed
 
 ---
 
-## 10. B2C (External Identities)
+<a id="11-b2c-external-identities"></a>
+## 11. B2C (External Identities)
 
 ### When to use B2C vs B2B
 
@@ -680,7 +809,8 @@ New-AzureADMSInvitation -InvitedUserEmailAddress partner@fabrikam.com -InviteRed
 
 ---
 
-## 11. Entra External ID
+<a id="12-entra-external-id"></a>
+## 12. Entra External ID
 
 ### What it is
 Microsoft Entra External ID is the broader external identity platform for managing external users and customer/workforce external access scenarios.
@@ -704,7 +834,8 @@ Microsoft Entra External ID is the broader external identity platform for managi
 
 ---
 
-## 12. Security Best Practices
+<a id="13-security-best-practices"></a>
+## 13. Security Best Practices
 
 ### Zero Trust principles applied to identity
 - Verify explicitly.
@@ -750,7 +881,87 @@ az rest --method GET \
 
 ---
 
-## 13. AZ-305 Decision Scenarios
+<a id="14-availability-resilience"></a>
+## 14. Availability & Resilience
+
+Identity is a **control-plane dependency**. If users cannot sign in, admins cannot elevate, workloads cannot obtain tokens, and applications fail even when compute is healthy. For AZ-305, design identity with the same resilience mindset you would apply to network or database architecture.
+
+### Built-in resilience principles
+
+| Design Area | What to Know | Architecture Guidance |
+|---|---|---|
+| **Microsoft Entra ID service availability** | Entra ID is a globally distributed Microsoft-managed service with built-in redundancy | Treat the core directory as highly available, but design app dependencies and operational access around token issuance and policy evaluation availability |
+| **Azure-hosted workload identity** | Managed identities remove secret rotation failures and reduce credential outage risk | Prefer managed identity over secrets/certificates for Azure workloads whenever possible |
+| **Hybrid sign-in** | PHS, PTA, and federation have different dependency chains | Default to **PHS** for the simplest and most resilient hybrid sign-in path |
+| **Privileged access** | Lockout of privileged accounts becomes an availability incident | Maintain at least two monitored break-glass accounts excluded from Conditional Access |
+| **External collaboration** | Cross-tenant access depends on policy trust and partner readiness | Document fallback paths and guest access governance for critical partner workflows |
+
+### Hybrid identity resilience comparison
+
+| Method | Resilience Profile | Operational Tradeoff |
+|---|---|---|
+| **Password Hash Sync (PHS)** | Highest resiliency for most enterprises because cloud auth continues even if on-prem validation systems are unavailable | Simplest operating model; best default for AZ-305 |
+| **Pass-through Authentication (PTA)** | Depends on healthy PTA agents and connectivity back to on-premises | Meets "validate on-prem" requirements but adds runtime dependency |
+| **Federation (AD FS or equivalent)** | Most complex; depends on federation infrastructure, certificates, proxies, and network paths | Use only for explicit requirements, not as the default |
+
+### High-availability design patterns
+- Keep **at least two emergency access accounts** with strong credentials, monitoring, and offline storage procedures.
+- Use **group-based role assignment** plus PIM so privileged access can still be activated predictably during incidents.
+- Prefer **managed identity** or **workload identity federation** to eliminate outages caused by expired client secrets.
+- For critical SaaS integrations, document **token lifetime**, certificate renewal, and app registration ownership responsibilities.
+- Validate that monitoring covers **sign-in failures**, **Conditional Access failures**, **PTA agent health**, and **directory synchronization health**.
+
+### Resilience checklist for exam scenarios
+- If the prompt says **simplest and most resilient hybrid sign-in**, choose **PHS**.
+- If the prompt says **avoid secret expiration risk**, choose **managed identity** or **federation**.
+- If the prompt says **prevent tenant lockout**, include **break-glass accounts**.
+- If the prompt says **legacy federation** without a hard requirement, look for a simpler cloud-native alternative.
+
+---
+
+<a id="15-cost-optimization"></a>
+## 15. Cost Optimization
+
+AZ-305 identity questions are usually about **licensing the minimum tier that still satisfies security and governance requirements**. The exam expects you to avoid both under-licensing and over-engineering.
+
+### Licensing tiers — Free vs P1 vs P2
+
+| Capability | Free | P1 | P2 |
+|---|---:|---:|---:|
+| User/group management | Yes | Yes | Yes |
+| SSO to Microsoft 365/Azure/SaaS | Yes | Yes | Yes |
+| Security defaults | Yes | Yes | Yes |
+| Basic MFA capability | Limited | Yes | Yes |
+| Conditional Access | No | Yes | Yes |
+| Dynamic groups | No | Yes | Yes |
+| Self-service password reset (writeback advanced scenarios) | Limited | Yes | Yes |
+| Hybrid identity advanced features | Limited | Yes | Yes |
+| Identity Protection | No | No | Yes |
+| Privileged Identity Management (PIM) | No | No | Yes |
+| Access reviews | No | No | Yes |
+| Entitlement management | No | No | Yes |
+
+### When to choose each tier
+
+| Tier | Best For | Cost Optimization Guidance |
+|---|---|---|
+| **Free** | Small tenants needing baseline identity, SSO, and security defaults | Choose only when the scenario does **not** require Conditional Access, PIM, or risk-based identity controls |
+| **P1** | Enterprises needing Conditional Access, dynamic groups, and modern hybrid identity controls | Best value when you need **policy-driven access control** without full governance/risk analytics |
+| **P2** | Privileged administration, identity governance, and risk-based remediation | Pay for P2 when the question explicitly calls for **PIM**, **Identity Protection**, **access reviews**, or **entitlement management** |
+
+### Cost-saving design patterns
+- Start with **Free** only for basic tenants and straightforward requirements.
+- Upgrade to **P1** when Conditional Access replaces a patchwork of weaker controls.
+- Upgrade to **P2** only when governance and risk-based controls are true requirements.
+- Prefer **managed identities** over service principals with secrets to reduce credential lifecycle overhead.
+- Consolidate access through **groups** and **role-based assignments** to reduce administrative sprawl.
+
+> 💡 **AZ-305 Tip:** If the scenario needs **Conditional Access**, **P1** is the floor. If it needs **PIM** or **Identity Protection**, go straight to **P2**.
+
+---
+
+<a id="16-az-305-decision-scenarios"></a>
+## 16. AZ-305 Decision Scenarios
 
 ### 1. Multi-tenant SaaS identity design
 **Scenario:** You are designing a SaaS application used by customers from many organizations. Each organization wants its own tenant to authenticate its users.
@@ -838,7 +1049,8 @@ az rest --method GET \
 
 ---
 
-## 14. Quick Reference Trigger Table
+<a id="17-quick-reference-trigger-table"></a>
+## 17. Quick Reference Trigger Table
 
 | If the scenario says... | Think... |
 |---|---|
@@ -881,7 +1093,8 @@ az rest --method GET \
 
 ---
 
-## 15. Common Exam Traps
+<a id="18-common-exam-traps"></a>
+## 18. Common Exam Traps
 
 ### 1. B2B vs B2C confusion
 - **B2B** = partners, vendors, guest users accessing your workforce resources.
@@ -921,28 +1134,8 @@ az rest --method GET \
 
 ---
 
-## Senior Architect Exam Strategy
-
-### Fast elimination rules
-- If it says **partner** -> start with **B2B**.
-- If it says **customer portal** -> start with **B2C/External ID**.
-- If it says **Azure-hosted workload needs Azure resource access** -> start with **managed identity**.
-- If it says **privileged admin with approval/JIT** -> start with **PIM**.
-- If it says **risk-based access** -> start with **Identity Protection + Conditional Access**.
-- If it says **granular sign-in control** -> start with **Conditional Access**.
-- If it says **simple hybrid** -> start with **PHS**.
-
-### What AZ-305 usually rewards
-- Least privilege
-- Zero Trust design
-- Secretless identity where possible
-- Cloud-native controls over legacy complexity
-- Governance and operational simplicity
-- Phased rollout using report-only/testing
-
----
-
-## Command Snippets to Remember
+<a id="19-command-snippets-to-remember"></a>
+## 19. Command Snippets to Remember
 
 ```bash
 # Users, groups, apps
@@ -978,7 +1171,74 @@ az rest --method GET --url "https://graph.microsoft.com/v1.0/auditLogs/signIns?$
 
 ---
 
-## Final Review Questions
+<a id="20-final-az-305-exam-tips"></a>
+## 20. 🎯 Final AZ-305 Exam Tips
+
+1. If the scenario says **partner**, start with **B2B** before considering customer identity options.
+2. If it says **customer portal** or **public sign-up**, start with **B2C/External ID**, not workforce collaboration.
+3. If an **Azure-hosted workload needs Azure resource access**, start with **managed identity**.
+4. If privileged admins need **approval, JIT, or time-bound elevation**, start with **PIM**.
+5. If the prompt emphasizes **risk-based access** or compromised identities, combine **Identity Protection + Conditional Access**.
+6. If the question asks for **granular sign-in control**, report-only rollout, named locations, or device conditions, the answer is usually **Conditional Access**, not security defaults.
+7. If hybrid requirements are simple and resilient, default to **Password Hash Sync (PHS)** unless a requirement explicitly forces PTA or federation.
+8. AZ-305 usually rewards **least privilege** and **secretless identity** over legacy complexity.
+9. AZ-305 usually rewards **cloud-native controls** and **operational simplicity** over custom infrastructure.
+10. AZ-305 usually rewards **phased rollout and governance at scale** — think report-only testing, group-based assignments, and auditable privileged access.
+
+### Fast elimination rules
+- If it says **partner** -> start with **B2B**.
+- If it says **customer portal** -> start with **B2C/External ID**.
+- If it says **Azure-hosted workload needs Azure resource access** -> start with **managed identity**.
+- If it says **privileged admin with approval/JIT** -> start with **PIM**.
+- If it says **risk-based access** -> start with **Identity Protection + Conditional Access**.
+- If it says **granular sign-in control** -> start with **Conditional Access**.
+- If it says **simple hybrid** -> start with **PHS**.
+
+### What AZ-305 usually rewards
+- Least privilege
+- Zero Trust design
+- Secretless identity where possible
+- Cloud-native controls over legacy complexity
+- Governance and operational simplicity
+- Phased rollout using report-only/testing
+
+---
+
+<a id="21-architecture-decision-flowchart"></a>
+## 21. 📐 Architecture Decision Flowchart
+
+```
+Start
+  │
+  ├─ Are the identities for employees/admins?
+  │     ├─ Yes → Microsoft Entra ID
+  │     │        ├─ Need Conditional Access or dynamic groups? → P1
+  │     │        ├─ Need PIM / Identity Protection / Access Reviews? → P2
+  │     │        └─ Need hybrid sign-in? → Prefer PHS, then evaluate PTA/Federation only if required
+  │     │
+  │     └─ No
+  │
+  ├─ Is the caller an Azure-hosted workload?
+  │     ├─ Yes → Managed Identity
+  │     └─ No  → Service Principal + Certificate or Workload Identity Federation
+  │
+  ├─ Are the users partner organizations accessing your tenant resources?
+  │     ├─ Yes → Entra B2B / Cross-tenant access settings
+  │     └─ No
+  │
+  ├─ Are the users customers or citizens using a public application?
+  │     ├─ Yes → Entra External ID / B2C-style architecture
+  │     └─ No
+  │
+  └─ Does the app require LDAP, Kerberos, NTLM, domain join, or GPO?
+        ├─ Yes → AD DS or Entra Domain Services
+        └─ No  → Re-evaluate for Entra ID modern authentication patterns
+```
+
+---
+
+<a id="22-exam-style-review-questions"></a>
+## 22. Exam-Style Review Questions
 
 1. A company wants external suppliers to use their own corporate credentials to access a procurement app in your tenant. Which identity model should you recommend, and why is B2C the wrong answer?
 2. Your security team wants all privileged admins to have no standing access, require approval, and activate roles only when needed. Which Entra feature and license tier are required?
@@ -988,4 +1248,8 @@ az rest --method GET --url "https://graph.microsoft.com/v1.0/auditLogs/signIns?$
 
 ---
 
-**Bottom line:** For AZ-305, the best Entra ID answer is usually the one that is **least privileged, cloud-native, risk-aware, and easiest to govern at scale**.
+## Footer
+
+*Bottom line: For AZ-305, the best Entra ID answer is usually the one that is least privileged, cloud-native, risk-aware, and easiest to govern at scale.*
+
+*Use this sheet with the Entra ID labs to validate design choices through hands-on practice, then map each scenario back to least privilege, resiliency, and governance.*

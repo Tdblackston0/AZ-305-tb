@@ -1,17 +1,96 @@
+# Azure Disaster Recovery - AZ-305 Comprehensive Cheat Sheet
+
 > 📝 **Hands-On Labs:** [DR Labs](./Labs/Azure-DR-Labs.md)
 
-# Azure Disaster Recovery Cheat Sheet + AZ-305 Exam Prep
+> 🎯 **Exam Focus:** AZ-305 tests your ability to **design** DR solutions with appropriate RTO/RPO targets and failover patterns.
 
 **Perspective:** Senior Cloud Solution Architect  
 **Primary AZ-305 Domain:** Design business continuity solutions (15-20%)
 
 Use this file to map business requirements to **RTO**, **RPO**, DR patterns, and Azure-native recovery services. The exam usually rewards the **simplest architecture that still meets recovery objectives**.
 
+## Table of Contents
+
+- [Azure DR Family Overview](#1-azure-dr-family-overview)
+- [When to Choose Which — Decision Tree](#2-when-to-choose-which--decision-tree)
+- [Availability & Resilience](#3-availability--resilience)
+- [Cost Optimization](#4-cost-optimization)
+- [RTO/RPO Design](#5-rtorpo-design)
+- [DR Patterns](#6-dr-patterns)
+- [Azure Site Recovery (ASR)](#7-azure-site-recovery-asr)
+- [Azure-to-Azure DR](#8-azure-to-azure-dr)
+- [Database DR Options](#9-database-dr-options)
+- [Storage DR](#10-storage-dr)
+- [Application DR Patterns](#11-application-dr-patterns)
+- [DR Testing](#12-dr-testing)
+- [DR for Specific Workloads](#13-dr-for-specific-workloads)
+- [AZ-305 Decision Scenarios](#14-az-305-decision-scenarios)
+- [Quick Reference Trigger Table](#15-quick-reference-trigger-table)
+- [Common Exam Traps](#16-common-exam-traps)
+- [🎯 Final AZ-305 Exam Tips](#17--final-az-305-exam-tips)
+- [📐 Architecture Decision Flowchart](#18--architecture-decision-flowchart)
+- [Exam-Style Review Questions](#19-exam-style-review-questions)
+
 ---
 
-## 1. Disaster Recovery Overview
+<a id="1-azure-dr-family-overview"></a>
+## 1. Azure DR Family Overview
 
-### DR vs Backup vs HA
+### Core Azure DR comparison table
+
+| Service | Primary scope | Best for | Typical RTO | Typical RPO | Key strengths | Common exam cue |
+|---|---|---|---|---|---|---|
+| **Azure Site Recovery (ASR)** | Compute / VM / server orchestration | Azure VMs, VMware, Hyper-V, physical servers | Minutes to hours | Seconds to minutes | Recovery plans, boot order, failback, test failover | "Legacy VM app", "orchestrated regional failover", "VM DR" |
+| **SQL Failover Groups** | PaaS relational database continuity | Azure SQL Database / SQL Managed Instance | Seconds to minutes | Seconds | Stable listener endpoint, automatic failover, multi-database coordination | "Multiple databases", "automatic failover", "no connection string changes" |
+| **Cosmos DB Multi-Region** | Globally distributed NoSQL continuity | Low-latency global apps with multi-region presence | Seconds | Near 0 to seconds | Automatic failover, optional multi-region writes, global distribution | "Global app", "worldwide users", "active-active writes" |
+| **Azure Storage GRS / GZRS / RA-GRS / RA-GZRS** | Storage durability and regional data protection | Blob/file/object workloads needing regional durability | Minutes to hours for failover | Seconds to minutes | Geo-redundancy, optional readable secondary, simple platform-native protection | "Read from secondary", "storage regional outage", "geo-redundancy" |
+| **Azure Front Door** | Global application entry point | HTTP/HTTPS app failover and traffic steering | Seconds to minutes | N/A (traffic layer) | Fast app-layer failover, health probes, WAF, acceleration | "Fastest web failover", "global routing", "WAF + failover" |
+
+> 💡 **AZ-305 Tip:** Start by identifying the failure domain. If the problem is **VM/server recovery**, think **ASR**. If it is **PaaS database continuity**, think **native database failover**. If it is **global web routing**, think **Front Door**.
+
+### Azure Site Recovery (ASR)
+A disaster recovery orchestration service for **VMs and servers**. ASR continuously replicates workloads to another Azure region or from on-premises into Azure, then coordinates **test failover**, **planned failover**, **unplanned failover**, and **failback**. It is the right answer when the application stack is tightly coupled to operating systems, VM boot order, or multi-tier recovery sequencing.
+
+**Real-World Examples:**
+- A **legacy ERP system** running on Azure VMs needs region-to-region replication with a defined startup order for app, middleware, and database tiers
+- A **manufacturing company** wants VMware-to-Azure DR without maintaining a secondary datacenter footprint
+- A **hospital imaging platform** needs non-disruptive DR drills using isolated test failover networks before audit season
+
+### SQL Failover Groups
+The native DR feature for **Azure SQL Database** and **SQL Managed Instance** when you need **cross-region failover with stable listener endpoints**. Failover groups simplify app continuity because applications connect to a listener rather than a regional server name. They are especially strong when multiple databases must fail over together and when automatic failover is required.
+
+**Real-World Examples:**
+- An **e-commerce platform** uses multiple Azure SQL databases and needs one consistent endpoint during regional failover
+- A **CRM platform** requires automatic failover within minutes while keeping application connection strings unchanged
+- A **regulated financial app** runs on SQL Managed Instance and needs managed PaaS SQL with cross-region continuity
+
+### Cosmos DB Multi-Region
+A globally distributed DR and availability model for **NoSQL applications** that need regional resilience and low-latency access close to users. Cosmos DB supports **automatic failover**, **multiple read regions**, and optionally **multi-region writes** for active-active style patterns. This is a database-native continuity solution — not a VM replication scenario.
+
+**Real-World Examples:**
+- A **global SaaS API** serves customers from multiple continents and needs automatic regional failover without manual intervention
+- A **retail mobile app** needs low-latency reads worldwide with session consistency during regional disruption
+- An **IoT telemetry platform** ingests data across regions and uses multi-region writes to avoid a single write-region dependency
+
+### Azure Storage Geo-Redundancy
+Azure Storage DR features such as **GRS**, **RA-GRS**, **GZRS**, and **RA-GZRS** protect data by asynchronously replicating it to another region, optionally with read access to the secondary endpoint. These features protect **data durability**, not full application orchestration. Customer-initiated storage failover is typically reserved for severe regional outage scenarios.
+
+**Real-World Examples:**
+- A **media archive** stores large blobs and needs low-cost regional durability rather than a full active-active architecture
+- A **document management platform** needs read access to the secondary region during a prolonged outage investigation, making **RA-GRS** a fit
+- A **line-of-business app** needs stronger in-region resilience plus regional protection, making **GZRS** or **RA-GZRS** the better answer
+
+### Azure Front Door
+A global HTTP/HTTPS entry service used for **fast application failover**, **health-based routing**, **TLS termination**, and **WAF protection**. Front Door is not the data replication service — it is the **traffic control plane** for web applications. Pair it with replicated compute and data services to complete the end-to-end DR design.
+
+**Real-World Examples:**
+- A **consumer web app** runs active-passive across East US and West US and needs fast failover for web traffic
+- A **B2B SaaS portal** needs global routing plus WAF while failing over to a standby region during outages
+- An **API platform** uses Front Door to steer clients away from an unhealthy region while Cosmos DB and App Service continue in another region
+
+### Foundational DR concepts
+
+#### DR vs Backup vs HA
 
 | Capability | Primary goal | Typical scope | What it does well | What it does not solve by itself |
 |---|---|---|---|---|
@@ -25,7 +104,7 @@ Use this file to map business requirements to **RTO**, **RPO**, DR patterns, and
 - Use **DR** for site or regional failure.  
 - Most enterprise workloads need **all three**.
 
-### RTO and RPO definitions
+#### RTO and RPO definitions
 
 - **RTO (Recovery Time Objective):** maximum acceptable downtime.
 - **RPO (Recovery Point Objective):** maximum acceptable data loss measured in time.
@@ -35,7 +114,7 @@ Use this file to map business requirements to **RTO**, **RPO**, DR patterns, and
 - Online banking: **RTO < 15 minutes / RPO near 0** -> hot standby or active-active with synchronous/near-synchronous data replication.
 - Internal wiki: **RTO 24 hours / RPO 12 hours** -> low-cost backup and restore.
 
-### Business impact analysis (BIA)
+#### Business impact analysis (BIA)
 
 A strong DR design starts with BIA inputs:
 - Critical business process
@@ -45,7 +124,7 @@ A strong DR design starts with BIA inputs:
 - Peak load during failover
 - Manual vs automated recovery requirements
 
-### DR tiers and patterns
+#### DR tiers and patterns
 
 | Tier | Pattern | Cost | Complexity | Typical RTO | Typical RPO |
 |---|---|---:|---:|---|---|
@@ -55,7 +134,7 @@ A strong DR design starts with BIA inputs:
 | Tier 3 | Hot standby | High | High | Minutes | Seconds to minutes |
 | Tier 4 | Active-active | Highest | Highest | Seconds to minutes | Near 0 to seconds |
 
-### Command snapshot
+#### Command snapshot
 
 ```bash
 # Example: create a Recovery Services vault for backup/DR governance
@@ -73,29 +152,52 @@ Get-AzRecoveryServicesVault | Select-Object Name, ResourceGroupName, Location
 
 ---
 
-## 2. RTO/RPO Design
+<a id="2-when-to-choose-which--decision-tree"></a>
+## 2. When to Choose Which — Decision Tree
 
-### RTO/RPO requirements matrix
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ What must survive the failure?                                    │
+└───────────────┬────────────────────────────────────────────────────┘
+                │
+     ┌──────────┼───────────┬───────────────┬───────────────────────┐
+     │          │           │               │                       │
+     ▼          ▼           ▼               ▼                       ▼
+ Compute/VM   SQL PaaS   Global NoSQL   Storage durability     Web entry point
+     │          │           │               │                       │
+     │          │           │               │                       │
+     ▼          ▼           ▼               ▼                       ▼
+Use ASR     Need stable   Need regional   Need read access?     Need fastest HTTP/
+with        listener +    failover +      ├── YES → RA-GRS /    HTTPS failover +
+recovery    auto failover? multi-region   │         RA-GZRS     WAF + health probes?
+plans       ├── YES → SQL writes?         └── NO  → GRS / GZRS         │
+             │         Failover Group   ├── YES → Cosmos multi-        │
+             └── NO  → Active geo-      │         region writes        ▼
+                       replication       └── NO  → Cosmos auto       Azure Front Door
+                                          failover + read regions
 
-| Workload class | Example | RTO target | RPO target | Design implication |
-|---|---|---:|---:|---|
-| Mission critical | Trading, payments | < 15 min | Near 0 | Active-active or hot standby; native DB failover |
-| Business critical | ERP, CRM | < 1 hour | < 15 min | Warm or hot standby; automated failover |
-| Important | Intranet, analytics refresh | < 4 hours | < 1 hour | Warm standby or pilot light |
-| Standard | Line-of-business app | < 24 hours | < 4 hours | Pilot light or backup/restore |
-| Noncritical | Dev/test | 1-3 days | 24 hours+ | Backup/restore + IaC rebuild |
+If the requirement is only "survive a zonal outage in one region" → choose Availability Zones / zone-redundant services, not cross-region DR.
+If the requirement is "recover deleted or corrupted data" → choose Backup/PITR/immutability, not only failover.
+```
 
-### Cost vs RTO/RPO trade-offs
+### Quick decision matrix
 
-| Design choice | Cost impact | Benefit | Common exam angle |
-|---|---:|---|---|
-| Multi-region always-on | High | Lowest RTO | Use only when justified by strict requirements |
-| Scaled-down warm standby | Medium | Good balance | Common best answer |
-| Backup only | Low | Cheapest | Only valid when downtime is acceptable |
-| Synchronous replication | High | Lowest RPO | Needed only when data loss must approach zero |
-| Asynchronous replication | Medium | Lower cost/latency | Common for cross-region DR |
+| Scenario | Choose first |
+|---|---|
+| Azure VM-based legacy app with orchestrated recovery | Azure Site Recovery |
+| Multiple Azure SQL databases + automatic failover + stable endpoint | SQL Failover Group |
+| Global app with worldwide users and near-zero regional interruption | Cosmos DB multi-region |
+| Need read access to secondary storage region | RA-GRS / RA-GZRS |
+| Need fastest HTTP/HTTPS failover for a web app | Azure Front Door |
+| Only need same-region resilience | Availability Zones / ZRS |
+| Need cheap recovery with long tolerated downtime | Backup and restore |
 
-### SLA mapping to architecture
+---
+
+<a id="3-availability--resilience"></a>
+## 3. Availability & Resilience
+
+### SLA vs HA vs DR
 
 **Remember:** SLA is not the same as DR.
 - **SLA** = Microsoft uptime commitment for a service.
@@ -109,6 +211,96 @@ Get-AzRecoveryServicesVault | Select-Object Name, ResourceGroupName, Location
 | Recover deleted data | Backup/PITR/soft delete/immutability |
 | Keep same app endpoint after DB failover | Failover group listener |
 
+### Layered resilience model
+
+| Layer | Availability pattern | DR pattern | AZ-305 design note |
+|---|---|---|---|
+| Compute | Availability Sets / Zones / VMSS / zone-redundant PaaS | ASR or multi-region deployment | HA reduces local downtime; DR handles region loss |
+| Data | Local HA replicas, zone redundancy | Native geo-replication, failover groups, Cosmos multi-region | Prefer service-native replication before custom designs |
+| Storage | ZRS for in-region resilience | GRS/GZRS/RA-GRS/RA-GZRS | Readable secondary is a key exam differentiator |
+| Network / Entry | Load balancers, zone-resilient gateways | Front Door / Traffic Manager | Front Door = fast app-layer failover; Traffic Manager = DNS-based |
+| Identity / Secrets | Redundant controllers, Entra resilience | Cross-region dependency validation | Identity outages can break DR even if compute recovers |
+| Application state | Stateless web tier, externalized session | Redis geo-replication, DB-backed session, token auth | In-memory session hurts DR posture |
+
+### ASR with Availability Zones
+- Availability Zones improve **HA in-region**.
+- ASR provides **cross-region/site DR**.
+- Together they form layered BCDR.
+- Typical pattern: zone-redundant primary + ASR to paired/approved DR region.
+
+### Stateless application DR
+- Best DR posture for web/API tiers
+- Rehydrate from IaC + CI/CD in secondary region
+- Store session and state externally
+- Front Door or Traffic Manager directs traffic to healthy region
+
+### Session management in DR
+- In-memory session -> poor DR choice
+- Better options:
+  - Redis geo-replication
+  - Database-backed session store
+  - Token-based stateless auth
+
+### DNS-based failover (Traffic Manager, Front Door)
+
+| Service | Best use | Strength | Limitation |
+|---|---|---|---|
+| Traffic Manager | DNS-based regional failover | Simple, global, protocol-agnostic | Depends on DNS TTL/client cache |
+| Front Door | HTTP/HTTPS app failover | Faster app-layer failover, WAF, acceleration | Web workloads only |
+
+> 💡 **AZ-305 Tip:** If the question says the application must survive **zonal outage but not regional outage**, the answer is usually **Availability Zones / zone-redundant services**. That is **HA**, not cross-region DR.
+
+---
+
+<a id="4-cost-optimization"></a>
+## 4. Cost Optimization
+
+### Cost vs RTO/RPO trade-offs
+
+| Design choice | Cost impact | Benefit | Common exam angle |
+|---|---:|---|---|
+| Multi-region always-on | High | Lowest RTO | Use only when justified by strict requirements |
+| Scaled-down warm standby | Medium | Good balance | Common best answer |
+| Backup only | Low | Cheapest | Only valid when downtime is acceptable |
+| Synchronous replication | High | Lowest RPO | Needed only when data loss must approach zero |
+| Asynchronous replication | Medium | Lower cost/latency | Common for cross-region DR |
+
+### Cost optimization levers by pattern
+
+| Pattern / Service | Cost lever | Trade-off |
+|---|---|---|
+| Backup and restore | No warm environment; rebuild from IaC | Highest RTO |
+| Pilot light | Replicate only core data/services | More automation required during failover |
+| Warm standby | Run secondary at reduced scale, then scale out on failover | Ongoing standby cost remains |
+| Azure Front Door vs Traffic Manager | Traffic Manager is cheaper/simpler for DNS failover | Slower perceived failover due to DNS TTL |
+| GRS vs RA-GRS vs GZRS | Choose only the redundancy/read-access level needed | Higher resilience tiers cost more |
+| Cosmos DB multi-region writes | Disable multi-write unless business truly needs it | Lower complexity and cost with single write region |
+| ASR for noncritical workloads | Protect only critical VMs, not every environment | Lower coverage for low-priority workloads |
+
+### Practical cost guidance
+- **Warm standby** is often the best business compromise for AZ-305: lower cost than hot standby, much faster recovery than backup-only.
+- Use **backup + IaC** for dev/test and noncritical workloads instead of paying for idle secondary environments.
+- Scale secondary **App Service / AKS / VM** capacity down until failover.
+- Use **native service DR** before custom multi-VM patterns when both satisfy requirements.
+- Do not pay for **active-active** unless the question explicitly demands very low RTO/RPO and justifies the operational complexity.
+
+> 💡 **AZ-305 Tip:** If the scenario emphasizes **cost-sensitive** or **simplest design that still meets requirements**, hot standby and active-active are usually wrong unless the RTO/RPO targets force them.
+
+---
+
+<a id="5-rtorpo-design"></a>
+## 5. RTO/RPO Design
+
+### RTO/RPO requirements matrix
+
+| Workload class | Example | RTO target | RPO target | Design implication |
+|---|---|---:|---:|---|
+| Mission critical | Trading, payments | < 15 min | Near 0 | Active-active or hot standby; native DB failover |
+| Business critical | ERP, CRM | < 1 hour | < 15 min | Warm or hot standby; automated failover |
+| Important | Intranet, analytics refresh | < 4 hours | < 1 hour | Warm standby or pilot light |
+| Standard | Line-of-business app | < 24 hours | < 4 hours | Pilot light or backup/restore |
+| Noncritical | Dev/test | 1-3 days | 24 hours+ | Backup/restore + IaC rebuild |
+
 ### Table: RTO/RPO targets -> recommended architecture
 
 | RTO / RPO target | Recommended architecture | Typical Azure services |
@@ -118,6 +310,13 @@ Get-AzRecoveryServicesVault | Select-Object Name, ResourceGroupName, Location
 | < 1 hour / < 15 min | Warm standby | ASR + recovery plans, SQL failover groups, GRS/GZRS |
 | < 4 hours / < 1 hour | Pilot light | Replicated DB, IaC, automation runbooks |
 | 8-24 hours / 4-24 hours | Backup and restore | Azure Backup, SQL PITR, Storage account redundancy |
+
+### Design checklist
+- Map each business service to a required **RTO** and **RPO**.
+- Identify whether the target is about **downtime**, **data loss**, or both.
+- Decide whether **manual**, **scripted**, or **automatic** failover is required.
+- Validate supporting dependencies: identity, DNS, networking, secrets, monitoring, quotas.
+- Confirm whether the workload needs **same-region HA**, **cross-region DR**, or **backup/PITR**.
 
 ### Command snapshot
 
@@ -141,7 +340,8 @@ Get-AzStorageAccount -ResourceGroupName rg-data-prod -Name stproddata |
 
 ---
 
-## 3. DR Patterns
+<a id="6-dr-patterns"></a>
+## 6. DR Patterns
 
 ### Backup and restore
 - **Highest RTO, lowest cost**
@@ -195,7 +395,8 @@ Set-AzAppServicePlan -ResourceGroupName rg-dr-westus -Name asp-dr-westus -Number
 
 ---
 
-## 4. Azure Site Recovery (ASR)
+<a id="7-azure-site-recovery-asr"></a>
+## 7. Azure Site Recovery (ASR)
 
 ### ASR architecture and components
 
@@ -262,12 +463,6 @@ Plan for:
 - Peak failover concurrency
 - Network egress and application startup surge
 
-### ASR with Availability Zones
-- Availability Zones improve **HA in-region**.
-- ASR provides **cross-region/site DR**.
-- Together they form layered BCDR.
-- Typical pattern: zone-redundant primary + ASR to paired/approved DR region.
-
 ### Command snapshot
 
 ```bash
@@ -296,7 +491,8 @@ Start-AzRecoveryServicesAsrUnplannedFailoverJob -RecoveryPlan $plan -Direction P
 
 ---
 
-## 5. Azure-to-Azure DR
+<a id="8-azure-to-azure-dr"></a>
+## 8. Azure-to-Azure DR
 
 ### Cross-region replication
 - ASR is the main DR service for **Azure VM to Azure VM** failover.
@@ -343,7 +539,8 @@ Get-AzRecoveryServicesAsrReplicationProtectedItem |
 
 ---
 
-## 6. Database DR Options
+<a id="9-database-dr-options"></a>
+## 9. Database DR Options
 
 ### SQL Database
 
@@ -452,7 +649,8 @@ Get-AzCosmosDBAccount -ResourceGroupName rg-data-prod -Name cdb-global-prod |
 
 ---
 
-## 7. Storage DR
+<a id="10-storage-dr"></a>
+## 10. Storage DR
 
 ### GRS and RA-GRS
 - **GRS:** asynchronously replicates to secondary paired region
@@ -506,32 +704,13 @@ Get-AzStorageAccount -ResourceGroupName rg-data-prod -Name stproddata |
 
 ---
 
-## 8. Application DR Patterns
-
-### Stateless application DR
-- Best DR posture for web/API tiers
-- Rehydrate from IaC + CI/CD in secondary region
-- Store session and state externally
-- Front Door or Traffic Manager directs traffic to healthy region
+<a id="11-application-dr-patterns"></a>
+## 11. Application DR Patterns
 
 ### Stateful application considerations
 - Externalize state to managed DB/cache/storage
 - Coordinate app and data failover order
 - Validate message durability, idempotency, and replay behavior
-
-### Session management in DR
-- In-memory session -> poor DR choice
-- Better options:
-  - Redis geo-replication
-  - Database-backed session store
-  - Token-based stateless auth
-
-### DNS-based failover (Traffic Manager, Front Door)
-
-| Service | Best use | Strength | Limitation |
-|---|---|---|---|
-| Traffic Manager | DNS-based regional failover | Simple, global, protocol-agnostic | Depends on DNS TTL/client cache |
-| Front Door | HTTP/HTTPS app failover | Faster app-layer failover, WAF, acceleration | Web workloads only |
 
 ### Command snapshot
 
@@ -554,7 +733,8 @@ Get-AzFrontDoor -ResourceGroupName rg-global -Name fd-contoso-prod |
 
 ---
 
-## 9. DR Testing
+<a id="12-dr-testing"></a>
+## 12. DR Testing
 
 ### DR drill importance
 - A DR plan not tested is a DR plan not trusted
@@ -611,7 +791,8 @@ az automation runbook start \
 
 ---
 
-## 10. DR for Specific Workloads
+<a id="13-dr-for-specific-workloads"></a>
+## 13. DR for Specific Workloads
 
 ### AKS multi-region DR
 - Prefer GitOps/IaC to rebuild clusters consistently
@@ -676,7 +857,8 @@ az desktopvirtualization hostpool show \
 
 ---
 
-## 11. AZ-305 Decision Scenarios (10+ scenarios)
+<a id="14-az-305-decision-scenarios"></a>
+## 14. AZ-305 Decision Scenarios
 
 ### Scenario 1: Internal HR portal
 - **Requirement:** RTO 24 hours, RPO 8 hours, cost-sensitive
@@ -750,7 +932,8 @@ az desktopvirtualization hostpool show \
 
 ---
 
-## 12. Quick Reference Trigger Table (25+ entries)
+<a id="15-quick-reference-trigger-table"></a>
+## 15. Quick Reference Trigger Table
 
 | # | Trigger phrase | Think first | Recommended answer |
 |---:|---|---|---|
@@ -787,7 +970,8 @@ az desktopvirtualization hostpool show \
 
 ---
 
-## 13. Common Exam Traps
+<a id="16-common-exam-traps"></a>
+## 16. Common Exam Traps
 
 ### Geo-replication vs ASR confusion
 - **Wrong:** Use ASR for Azure SQL Database or Cosmos DB
@@ -832,7 +1016,21 @@ Get-AzStorageAccount -ResourceGroupName rg-data-prod -Name stproddata |
 
 ---
 
-## Senior Architect Exam Notes
+<a id="17--final-az-305-exam-tips"></a>
+## 🎯 Final AZ-305 Exam Tips
+
+1. Start every scenario by classifying the requirement as **backup**, **HA**, **DR**, or **BCDR**.
+2. Always separate **RTO** (time lost) from **RPO** (data lost).
+3. Prefer **native managed service DR** before custom VM-based solutions when both satisfy requirements.
+4. Match architecture to the **required** RTO/RPO, not to the most resilient design possible.
+5. **Warm standby** is often the practical middle ground the exam wants.
+6. Validate dependencies beyond compute and data: **identity, DNS, secrets, networking, quotas, monitoring, and automation**.
+7. Remember the core memory aids: **Backup = recover data**, **HA = survive local failure**, **DR = survive regional/site failure**.
+8. Keep these service shortcuts ready: **ASR = DR for VMs/servers**, **Failover group = SQL endpoint abstraction**, **RA-GRS = readable storage secondary**.
+9. For traffic routing, remember **Front Door = fast HTTP/HTTPS failover** and **Traffic Manager = DNS-based failover**.
+10. Test the plan regularly — measured drill results matter more than theoretical architecture diagrams.
+
+### Senior Architect Exam Notes
 
 1. Start every scenario by classifying the requirement as **backup**, **HA**, **DR**, or **BCDR**.
 2. Prefer **native managed service DR** before custom VM-based solutions when both satisfy requirements.
@@ -841,7 +1039,7 @@ Get-AzStorageAccount -ResourceGroupName rg-data-prod -Name stproddata |
 5. The exam often rewards **warm standby** as the practical middle ground.
 6. Always validate dependencies: identity, DNS, secrets, networking, quotas, monitoring, and automation.
 
-## Final Memory Aids
+### Final Memory Aids
 
 - **Backup** = recover data  
 - **HA** = survive local failure  
@@ -854,6 +1052,63 @@ Get-AzStorageAccount -ResourceGroupName rg-data-prod -Name stproddata |
 - **Front Door** = fast HTTP/HTTPS failover  
 - **Traffic Manager** = DNS-based failover  
 
+**Exam tip:** if the requirement says **lowest cost**, lean toward backup/restore or pilot light. If it says **minimal downtime and minimal data loss**, lean toward hot standby or active-active, but only if the business explicitly justifies the cost.
+
 ---
 
-**Exam tip:** if the requirement says **lowest cost**, lean toward backup/restore or pilot light. If it says **minimal downtime and minimal data loss**, lean toward hot standby or active-active, but only if the business explicitly justifies the cost.
+<a id="18--architecture-decision-flowchart"></a>
+## 📐 Architecture Decision Flowchart
+
+```
+Start
+  │
+  ├─► Is the requirement only protection from local host/rack/zone failure?
+  │      ├─► YES → Use HA: Availability Zones, ZRS, zone-redundant PaaS
+  │      └─► NO
+  │
+  ├─► Is the main requirement to recover deleted/corrupted data or meet retention?
+  │      ├─► YES → Use Backup/PITR/immutability (plus DR if regional recovery is also required)
+  │      └─► NO
+  │
+  ├─► What workload type is primary?
+  │      ├─► VM / server / VMware / Hyper-V → Azure Site Recovery
+  │      ├─► Azure SQL Database / SQL MI → Failover Group or active geo-replication
+  │      ├─► Cosmos DB → Multi-region + automatic failover (+ multi-write if needed)
+  │      ├─► Storage-only continuity → GRS / RA-GRS / GZRS / RA-GZRS
+  │      └─► Web app routing → Front Door or Traffic Manager
+  │
+  ├─► What RTO/RPO is required?
+  │      ├─► Near 0 / seconds → Active-active or hot standby
+  │      ├─► < 1 hour / minutes → Warm standby
+  │      ├─► Hours / hours → Pilot light
+  │      └─► Day-level recovery acceptable → Backup and restore
+  │
+  └─► Final check
+         ├─► Did you validate identity, DNS, secrets, networking, quotas, monitoring?
+         ├─► Did you choose the simplest pattern that still meets the target?
+         └─► Did you include testing and failback?
+```
+
+---
+
+<a id="19-exam-style-review-questions"></a>
+## Exam-Style Review Questions
+
+1. A company runs a three-tier application on Azure VMs and needs orchestrated cross-region failover with boot sequencing and test drills without production impact. **Which Azure service should you choose first, and why?**
+   - **Answer:** Azure Site Recovery, because the requirement is VM/server DR with orchestration, sequencing, and non-disruptive test failover.
+
+2. An application uses multiple Azure SQL databases and must fail over automatically to another region without changing application connection strings. **What is the best design?**
+   - **Answer:** Azure SQL failover groups, because the listener endpoint abstracts the regional server and supports automatic failover.
+
+3. A global e-commerce API needs regional failover in seconds and must keep serving users close to their location with minimal data loss. **Which database pattern fits best?**
+   - **Answer:** Cosmos DB multi-region with automatic failover, and multi-region writes if the scenario requires active-active writes.
+
+4. A file-heavy application needs regional durability, and architects must be able to read data from the secondary region during a primary outage investigation. **Which storage redundancy option is the best fit?**
+   - **Answer:** RA-GRS or RA-GZRS, because the requirement explicitly needs readable secondary access.
+
+5. A business says it is cost-sensitive and can tolerate several hours of downtime and some data loss. **Which DR pattern is most likely the best answer on AZ-305?**
+   - **Answer:** Backup and restore or pilot light, because the simplest low-cost design that still meets the stated RTO/RPO is usually preferred.
+
+---
+
+**Footer:** Pair this cheat sheet with [DR Labs](./Labs/Azure-DR-Labs.md), test every recovery path, and choose the **lowest-cost architecture that still meets the required RTO/RPO**. Back to [Table of Contents](#table-of-contents).

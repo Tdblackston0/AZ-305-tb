@@ -1,26 +1,114 @@
+# Azure Compute - AZ-305 Comprehensive Cheat Sheet
+
 > 📝 **Hands-On Labs:** [Compute Labs](./Labs/Azure-Compute-Labs.md)
 
-# Azure Compute Cheat Sheet + AZ-305 Exam Prep
+> 🎯 **Exam Focus:** AZ-305 tests your ability to **select** the right Azure compute platform based on business requirements — not just know what they are.
 
-**Audience:** Senior Cloud Solution Architect  
-**Primary exam domain:** Design infrastructure solutions (30-35%)  
-**Secondary domains:** Identity, governance, and monitoring; business continuity; data storage  
-**Use this for:** fast revision, architecture tradeoff analysis, CLI/PowerShell recall, and scenario-based exam thinking
+## Table of Contents
+
+- [1. Azure Compute Family Overview](#1-azure-compute-family-overview)
+- [2. When to Choose Which — Decision Tree](#2-when-to-choose-which--decision-tree)
+- [3. Azure Virtual Machines](#3-azure-virtual-machines)
+- [4. VM Series Deep Dive](#4-vm-series-deep-dive)
+- [5. Virtual Machine Scale Sets (VMSS)](#5-virtual-machine-scale-sets-vmss)
+- [6. Azure Kubernetes Service (AKS)](#6-azure-kubernetes-service-aks)
+- [7. Azure App Service](#7-azure-app-service)
+- [8. Azure Container Apps](#8-azure-container-apps)
+- [9. Azure Container Instances (ACI)](#9-azure-container-instances-aci)
+- [10. Azure Functions](#10-azure-functions)
+- [11. Azure Batch](#11-azure-batch)
+- [12. Availability & Resilience](#12-availability--resilience)
+- [13. Cost Optimization](#13-cost-optimization)
+- [14. AZ-305 Decision Scenarios](#14-az-305-decision-scenarios)
+- [15. 🎯 Final AZ-305 Exam Tips](#15--final-az-305-exam-tips)
+- [16. 📐 Architecture Decision Flowchart](#16--architecture-decision-flowchart)
+- [17. Exam-Style Review Questions](#17-exam-style-review-questions)
 
 ---
 
-## 1. Azure Compute Overview
+<a id="1-azure-compute-family-overview"></a>
+## 1. Azure Compute Family Overview
 
-Azure compute questions on AZ-305 are rarely about memorizing a service definition. Microsoft usually gives a workload with constraints around **control, scale, cost, latency, resiliency, and operations**, then asks for the **best-fit compute platform**.
+Azure compute questions on AZ-305 are rarely about memorizing definitions. The exam usually gives a workload with constraints around **control, scale, cost, latency, resiliency, and operations**, then asks for the **best-fit compute platform**.
 
-### Compute decision hierarchy
+### Compute Services Comparison Table
 
-| Layer | Service model | Best fit | Architect mindset |
-|---|---|---|---|
-| **IaaS** | Virtual Machines / VMSS | Full OS control, custom software, legacy apps, domain join, special drivers | Maximum control, maximum ops burden |
-| **CaaS** | AKS | Container orchestration, platform engineering, microservices, custom networking/policies | Choose when Kubernetes capability is required |
-| **PaaS** | App Service / Container Apps | Web apps, APIs, containerized apps with reduced infrastructure management | Default choice if workload fits platform limits |
-| **FaaS** | Azure Functions | Event-driven, bursty, short-lived execution | Best for pay-per-execution and rapid elasticity |
+| Service | Model | Best fit | Ops overhead | Scaling model | Common exam trigger |
+|---|---|---|---|---|---|
+| **Virtual Machines** | IaaS | Full OS control, legacy apps, custom software, special drivers | Highest | Manual or scripted | “Lift-and-shift”, “full admin control”, “custom agent” |
+| **VMSS** | IaaS fleet | Large sets of similar VMs with autoscale | High | Manual, scheduled, metric-based, predictive | “Identical web tier”, “autoscaling VM fleet” |
+| **AKS** | Managed Kubernetes | Kubernetes orchestration, platform engineering, microservices | Medium-High | Pod autoscale + cluster autoscale + KEDA | “Kubernetes required”, “service mesh”, “operators” |
+| **App Service** | PaaS | Web apps and APIs with minimal management | Low | Scale up/out, autoscale rules | “Deployment slots”, “Easy Auth”, “minimal ops” |
+| **Container Apps** | Serverless containers | Containerized apps, APIs, event-driven microservices without Kubernetes management | Low-Medium | HTTP/event-driven KEDA scaling, scale to zero | “Scale to zero”, “Dapr”, “KEDA” |
+| **ACI** | Serverless container runtime | One-off containers, short jobs, fast startup | Low | Instance-level only | “Quick container job”, “short-lived task” |
+| **Functions** | FaaS | Event-driven code, timers, queues, orchestration | Lowest | Automatic event-driven scale | “Serverless”, “queue trigger”, “Durable Functions” |
+| **Batch** | Managed batch platform | Large-scale parallel jobs, rendering, simulation, HPC farms | Medium | Pool/task driven autoscale | “Thousands of tasks”, “rendering”, “simulation” |
+
+> 💡 **AZ-305 Tip:** If the scenario can be solved with a managed platform, the exam often prefers **PaaS/serverless** over VMs because of lower operational overhead.
+
+### Azure Virtual Machines
+Azure Virtual Machines remain the default answer when you need **full control of the operating system, custom software stacks, legacy runtime support, or specialized hardware**. They are the most flexible compute option, but they also create the largest operational burden because you manage the guest OS, patching strategy, configuration drift, backup design, monitoring agents, and much of the resilience model yourself.
+
+**Real-World Examples:**
+- A **15-year-old Windows application** must move to Azure with almost no code changes and still requires RDP access.
+- A **third-party security appliance** needs kernel-level drivers and custom OS hardening.
+- A **GPU-backed AI training server** must use a specific CUDA stack and custom image.
+
+### Virtual Machine Scale Sets (VMSS)
+VMSS is the right answer when you need a **fleet of compute instances** with a consistent image/configuration, **autoscaling**, and **high availability**. It keeps the VM model but adds fleet management features such as autoscale, rolling upgrades, automatic repairs, and integration with load balancing for stateless app tiers.
+
+**Real-World Examples:**
+- A **retail web tier** must scale from 4 to 40 identical VMs during holiday traffic.
+- A **line-of-business API farm** needs rolling upgrades with health probes and automatic instance repair.
+- A **VDI-style worker fleet** must scale on a schedule during business hours and shrink overnight.
+
+### Azure Kubernetes Service (AKS)
+AKS is the managed Kubernetes answer when the solution needs **container orchestration with Kubernetes APIs and advanced platform control**. It is the strongest fit when the team explicitly needs Kubernetes concepts such as node pools, custom ingress, service mesh, operators, Helm charts, or policy-driven pod governance.
+
+**Real-World Examples:**
+- A **fintech platform** needs microservices with service mesh, network policies, and kubectl-based operations.
+- A **multi-team platform engineering group** standardizes deployments around Helm, GitOps, and Kubernetes CRDs.
+- A **regulated workload** needs Windows and Linux node pools, private cluster networking, and workload identity.
+
+### Azure App Service
+App Service is the exam-favorite PaaS answer for **web apps and APIs** when you want **minimal infrastructure management**. It abstracts away servers and patching while giving built-in web hosting capabilities such as deployment slots, custom domains, TLS, autoscale, authentication/authorization, and strong integration with CI/CD workflows.
+
+**Real-World Examples:**
+- A **public .NET API** needs deployment slots, Entra ID authentication, autoscale, and a fast delivery model.
+- A **corporate intranet site** needs custom domains, certificates, and minimal platform administration.
+- A **customer portal** needs outbound VNet access to a private database while keeping the app itself fully managed.
+
+### Azure Container Apps
+Azure Container Apps is the best answer when you want **serverless containers** with **managed scaling** and **reduced operational complexity**. It provides container packaging, revisions, KEDA-based scaling, Dapr integration, and scale-to-zero without asking the team to run Kubernetes.
+
+**Real-World Examples:**
+- A **containerized order API** must scale to zero overnight and back up quickly during business spikes.
+- A **microservices team** wants Dapr building blocks and event-driven scaling but does not want AKS overhead.
+- A **queue-driven worker service** needs KEDA-based scale-out on Service Bus messages.
+
+### Azure Container Instances (ACI)
+ACI is the simplest Azure container runtime for **single containers or small container groups** that must start quickly without orchestration. It is ideal for bursty, disposable compute where per-second billing and fast provisioning matter more than platform-level deployment patterns.
+
+**Real-World Examples:**
+- A **CI pipeline** launches a short-lived test runner container for 20 minutes and then deletes it.
+- A **data team** runs an ad hoc script in a container to preprocess files once per day.
+- A **development team** needs a temporary environment to validate one container image quickly.
+
+### Azure Functions
+Azure Functions is the FaaS answer for **event-driven code execution** with minimal infrastructure management. It shines when code runs in response to events, timers, queues, or HTTP requests and when the organization wants to pay only when code executes or use Premium plans for low-latency serverless behavior.
+
+**Real-World Examples:**
+- An **IoT solution** triggers message processing whenever new telemetry lands in Event Hubs.
+- A **back-office workflow** runs on a timer every night to reconcile orders.
+- A **serverless integration app** uses Durable Functions to orchestrate human approvals and callbacks.
+
+### Azure Batch
+Azure Batch is purpose-built for **large-scale parallel processing** and **HPC-style job scheduling**. It coordinates pools, jobs, and tasks so architects can run thousands of parallel units of work, often using low-priority or Spot-style capacity for major cost savings.
+
+**Real-World Examples:**
+- A **media company** renders millions of frames overnight before the morning deadline.
+- A **research lab** runs Monte Carlo simulations across hundreds of compute nodes.
+- A **financial services firm** executes large parallel risk calculations every evening.
 
 ### When to use VMs vs containers vs serverless
 
@@ -55,26 +143,87 @@ Get-AzWebApp
 Get-AzFunctionApp
 ```
 
-> 💡 **AZ-305 tip:** If the scenario can be solved with a managed platform, the exam often prefers **PaaS/serverless** over VMs because of lower operational overhead.
+---
+
+<a id="2-when-to-choose-which--decision-tree"></a>
+## 2. When to Choose Which — Decision Tree
+
+```text
+Start
+ │
+ ├─ Need full OS control, legacy runtime support, domain join, custom drivers, or RDP/SSH?
+ │  ├─ YES → Azure Virtual Machines
+ │  │        └─ Need many similar VMs with autoscale, rolling upgrades, and health-based repairs?
+ │  │           ├─ YES → VMSS
+ │  │           └─ NO  → Individual VMs
+ │  └─ NO
+ │
+ ├─ Is the workload containerized?
+ │  ├─ NO
+ │  │   ├─ Is it event-driven, timer-based, or queue-triggered code?
+ │  │   │   ├─ YES → Azure Functions
+ │  │   │   └─ NO  → Azure App Service (web app/API) or VMs if platform constraints exist
+ │  └─ YES
+ │      ├─ Need Kubernetes API, service mesh, operators, custom ingress, or advanced policies?
+ │      │   ├─ YES → AKS
+ │      │   └─ NO
+ │      ├─ Need a long-running app/API with scale-to-zero, revisions, Dapr, or KEDA?
+ │      │   ├─ YES → Azure Container Apps
+ │      │   └─ NO
+ │      ├─ Need a single short-lived container or ad hoc task?
+ │      │   ├─ YES → ACI
+ │      │   └─ NO  → Reassess AKS vs Container Apps
+ │
+ └─ Need thousands of parallel tasks, rendering, simulation, or HPC scheduling?
+    ├─ YES → Azure Batch
+    └─ NO  → Re-evaluate workload constraints
+```
+
+### Quick Decision Matrix
+
+| Scenario | Best answer | Why |
+|---|---|---|
+| Lift-and-shift Windows/Linux application | **Virtual Machines** | Least refactoring and full OS control |
+| Autoscaling stateless web/app tier on VMs | **VMSS** | Fleet management, autoscale, rolling upgrades |
+| Kubernetes microservices platform | **AKS** | Full Kubernetes ecosystem and control |
+| Public web app/API with minimal ops | **App Service** | PaaS simplicity, slots, Easy Auth |
+| Containerized app without Kubernetes overhead | **Container Apps** | Revisions, KEDA, scale to zero |
+| One-off container job or build runner | **ACI** | Fast startup and per-second billing |
+| Event-driven code execution | **Functions** | Triggers, bindings, serverless scaling |
+| Massive parallel job farm | **Batch** | Pools, jobs, tasks, HPC-style scheduling |
+
+### Compute Decision Matrix
+
+| Service | Typical scenario | Scaling model | Cost model | Best for |
+|---|---|---|---|---|
+| **Virtual Machines** | Lift-and-shift, legacy enterprise app, custom OS dependency | Manual or scripted / scale set assisted | Pay-as-you-go, RI, Savings Plan, Spot | Full control and legacy compatibility |
+| **VMSS** | Stateless web/app tier with autoscaling | Manual, scheduled, metric-based, predictive | VM-based with RI/Spot opportunities | Large fleets of similar VMs |
+| **AKS** | Kubernetes microservices, platform engineering | Pod autoscale + cluster autoscale + KEDA | Pay for nodes/storage/network, optional paid tier | Full K8s orchestration |
+| **App Service** | Web apps and APIs | Scale up/out, autoscale rules | App Service Plan based | PaaS web hosting with minimal ops |
+| **Container Apps** | Serverless containers, APIs, event-driven microservices | KEDA-based, HTTP/event, scale to zero | Consumption-style container billing | Managed container platform without AKS complexity |
+| **ACI** | One-off containers, burst jobs, build/test runners | Instance-level only | Per-second container billing | Fast, simple container execution |
+| **Functions** | Event-driven code, timers, queues, lightweight APIs | Automatic event-driven scale | Consumption, Premium, or App Service plan | FaaS and orchestration with Durable Functions |
+| **Batch** | HPC, rendering, simulation, scheduled large job farms | Pool/task driven autoscale | Underlying VM/storage/network cost | Parallel processing at scale |
+
+### Quick comparison summary
+
+| Requirement | Best answer |
+|---|---|
+| Full OS control | **VMs** |
+| Autoscaling identical VM fleet | **VMSS** |
+| Full Kubernetes ecosystem | **AKS** |
+| Simplest enterprise web app hosting | **App Service** |
+| Serverless containers | **Container Apps** |
+| Fast one-off containers | **ACI** |
+| Event-driven code execution | **Functions** |
+| Parallel compute farm | **Batch** |
 
 ---
 
-## 2. Azure Virtual Machines
+<a id="3-azure-virtual-machines"></a>
+## 3. Azure Virtual Machines
 
 Azure Virtual Machines remain the default answer when you need **full control of the operating system, custom software stacks, legacy runtime support, or specialized hardware**.
-
-### VM series and sizes
-
-| Series | Best for | Key characteristics | Common exam trigger |
-|---|---|---|---|
-| **B-series** | Dev/test, low baseline CPU, burstable workloads | Credits-based CPU bursting, low cost | “Low average CPU with occasional spikes” |
-| **D-series** | General-purpose app servers | Balanced CPU, memory, and temporary storage | “Standard enterprise app tier” |
-| **E-series** | Memory-intensive apps | Higher memory-to-vCPU ratio | “In-memory cache/database” |
-| **F-series** | Compute-heavy workloads | Higher CPU-to-memory ratio | “Build server / analytics / CPU bound” |
-| **M-series** | Very large memory SAP/HANA workloads | Extreme memory capacity, SAP certified SKUs | “SAP HANA / huge memory footprint” |
-| **N-series** | GPU workloads | NVIDIA GPUs for AI/ML, rendering, VDI | “GPU training / visualization” |
-| **L-series** | Storage throughput / IOPS heavy workloads | High local NVMe / storage optimized | “NoSQL / big data / high disk throughput” |
-| **H-series** | HPC and MPI workloads | High-performance CPU, RDMA/InfiniBand options | “Simulation / scientific compute / low latency MPI” |
 
 ### VM sizing methodology
 
@@ -87,74 +236,8 @@ Azure Virtual Machines remain the default answer when you need **full control of
    - GPU → N-series
 3. **Map non-functional requirements**: zones, encryption, backup, DR, region availability.
 4. **Start with right family, then right-size** using baseline + peak metrics.
-5. **Optimize cost** with Reserved Instances, Azure Hybrid Benefit, Spot, or dev/test pricing where appropriate.
+5. **Optimize cost** with Reserved Instances, Savings Plans, Azure Hybrid Benefit, Spot, or dev/test pricing where appropriate.
 6. **Validate region support** because not every series is in every region.
-
-### Availability Sets
-
-Availability Sets protect against host and maintenance failures **within a single datacenter**.
-
-| Concept | Meaning | Exam note |
-|---|---|---|
-| **Fault domains (FDs)** | Separate physical racks/power/network boundaries | Protect from rack-level failure |
-| **Update domains (UDs)** | Groups rebooted separately during planned maintenance | Protect from simultaneous maintenance reboot |
-
-- Use when the scenario needs **resiliency in one datacenter** and zones are not required/available.
-- Common AZ-305 distinction: **Availability Set ≠ datacenter isolation**.
-
-### Availability Zones
-
-Availability Zones place instances in **physically separate datacenters** within a region.
-
-- Best for production HA requiring **99.99%** style answers.
-- Use **zone-redundant architecture** when the question mentions datacenter-level isolation.
-- Combine with **Load Balancer**, **Application Gateway**, or **zone-redundant App Service/AKS** where relevant.
-
-### Proximity Placement Groups (PPG)
-
-Use PPG when the exam stresses:
-- **ultra-low latency** between VMs
-- tightly coupled app/database tiers
-- trading some placement flexibility for co-location
-
-Best fit: trading systems, HPC clusters, latency-sensitive app tiers.
-
-### Dedicated Hosts
-
-Use Azure Dedicated Hosts when you need:
-- host-level isolation
-- compliance or regulatory control
-- software licensing tied to physical cores/sockets
-- maintenance visibility over dedicated hardware
-
-### Spot VMs
-
-| Item | Key fact |
-|---|---|
-| Best for | Interruptible workloads, stateless jobs, batch, test farms |
-| Not for | Mission-critical stateful workloads |
-| Eviction policy | **Deallocate** or **Delete** |
-| Eviction triggers | Capacity pressure or max price policy |
-
-**Architect guidance:** Use Spot when workloads can checkpoint, retry, or tolerate interruption.
-
-### Reserved Instances
-
-| Term | Best for | Benefit | Tradeoff |
-|---|---|---|---|
-| **1-year RI** | Predictable medium-term workloads | Solid savings with shorter commitment | Less savings than 3-year |
-| **3-year RI** | Stable long-running workloads | Highest savings | Longest commitment |
-
-Key facts:
-- Scope can be **shared** or **single subscription**.
-- Instance size flexibility may apply within a VM family, improving utilization.
-- Use RIs for **steady-state production**; avoid for uncertain or short-lived workloads.
-
-### Azure Hybrid Benefit
-
-Use Azure Hybrid Benefit to reuse eligible on-premises Windows Server or SQL Server licenses with Software Assurance / qualifying subscription benefits.
-
-**Exam trigger words:** existing Windows licenses, reduce licensing cost, SQL Server on Azure VM, bring your own license.
 
 ### VM extensions
 
@@ -250,11 +333,72 @@ Enable-AzRecoveryServicesBackupProtection -Policy (Get-AzRecoveryServicesBackupP
 - **PPG** = low latency, not high resiliency.
 - **Dedicated Host** = compliance/licensing/isolation.
 - **Spot** = deep savings, eviction risk.
-- **RI + Hybrid Benefit** = strongest steady-state VM cost answer.
+- **Reserved Instances + Azure Hybrid Benefit** = strongest steady-state VM cost answer.
 
 ---
 
-## 3. Virtual Machine Scale Sets (VMSS)
+<a id="4-vm-series-deep-dive"></a>
+## 4. VM Series Deep Dive
+
+### Detailed VM Series Comparison
+
+| Series | Best for | Key characteristics | Common exam trigger |
+|---|---|---|---|
+| **B-series** | Dev/test, low baseline CPU, burstable workloads | Credits-based CPU bursting, low cost | “Low average CPU with occasional spikes” |
+| **D-series** | General-purpose app servers | Balanced CPU, memory, and temporary storage | “Standard enterprise app tier” |
+| **E-series** | Memory-intensive apps | Higher memory-to-vCPU ratio | “In-memory cache/database” |
+| **F-series** | Compute-heavy workloads | Higher CPU-to-memory ratio | “Build server / analytics / CPU bound” |
+| **M-series** | Very large memory SAP/HANA workloads | Extreme memory capacity, SAP certified SKUs | “SAP HANA / huge memory footprint” |
+| **N-series** | GPU workloads | NVIDIA GPUs for AI/ML, rendering, VDI | “GPU training / visualization” |
+| **L-series** | Storage throughput / IOPS heavy workloads | High local NVMe / storage optimized | “NoSQL / big data / high disk throughput” |
+| **H-series** | HPC and MPI workloads | High-performance CPU, RDMA/InfiniBand options | “Simulation / scientific compute / low latency MPI” |
+
+### B-series
+Use **B-series** when the workload runs at a low average CPU baseline and occasionally needs to burst. It is commonly the lowest-cost option for internal apps, development environments, and small services with idle periods.
+
+**Use cases:** dev/test VMs, jump boxes, internal apps with month-end spikes.
+
+### D-series
+Use **D-series** for balanced enterprise workloads that need a reliable mix of compute, memory, and temporary storage. It is often the default starting point for application servers and web tiers.
+
+**Use cases:** web servers, application servers, domain services, mid-tier business apps.
+
+### E-series
+Use **E-series** when memory is the bottleneck rather than CPU. These VMs are strong fits for in-memory databases, caching tiers, and analytics workloads that hold large datasets in RAM.
+
+**Use cases:** SAP app servers, in-memory caches, relational databases, analytics engines.
+
+### F-series
+Use **F-series** for CPU-bound workloads that need more compute relative to memory. These are strong fits for build agents, rendering workers, and analytics processes where CPU is the primary constraint.
+
+**Use cases:** build servers, batch compute workers, gaming backends, CPU-bound analytics.
+
+### M-series
+Use **M-series** when the workload needs extremely large memory footprints and enterprise certification. These are premium, specialized SKUs most commonly associated with SAP HANA and other huge in-memory workloads.
+
+**Use cases:** SAP HANA, massive in-memory databases, large-scale ERP platforms.
+
+### N-series
+Use **N-series** when a workload needs GPU acceleration. This family is the exam answer for AI/ML training, inference at scale, rendering, CAD, and virtual desktop scenarios requiring GPU-backed graphics or compute.
+
+**Use cases:** AI/ML training, video rendering, visualization, GPU-enabled VDI.
+
+### L-series
+Use **L-series** when local storage throughput and IOPS matter more than raw memory size. They are ideal for storage-optimized workloads, NoSQL engines, and data-intensive systems that benefit from very fast local disks.
+
+**Use cases:** Cassandra-style workloads, Elasticsearch, big data processing, log analytics nodes.
+
+### H-series
+Use **H-series** when the scenario mentions HPC, scientific modeling, MPI, or extremely low-latency node-to-node communication. These are the classic exam choice for simulations and technical computing.
+
+**Use cases:** engineering simulation, computational chemistry, weather modeling, MPI-based clusters.
+
+> 💡 **AZ-305 Tip:** The exam often cares more about choosing the **right VM family** than memorizing exact SKUs.
+
+---
+
+<a id="5-virtual-machine-scale-sets-vmss"></a>
+## 5. Virtual Machine Scale Sets (VMSS)
 
 VMSS is the right answer when you need a **fleet of compute instances** with consistent image/configuration, **autoscaling**, and **high availability**.
 
@@ -379,7 +523,8 @@ Update-AzVmss -ResourceGroupName "rg-compute-prod" -VMScaleSetName "vmss-web-pro
 
 ---
 
-## 4. Azure Kubernetes Service (AKS)
+<a id="6-azure-kubernetes-service-aks"></a>
+## 6. Azure Kubernetes Service (AKS)
 
 AKS is the managed Kubernetes answer when the solution needs **container orchestration with Kubernetes APIs and advanced platform control**.
 
@@ -454,14 +599,6 @@ Recommended services:
 - Use **maintenance windows** to control change timing.
 - Upgrade non-production first; keep node images and Kubernetes versions supported.
 
-### AKS cost optimization
-
-- Use **Spot node pools** for interruptible workloads.
-- Right-size system and user pools separately.
-- Use **cluster autoscaler** to avoid idle nodes.
-- Use **auto-stop/start** where applicable for non-production.
-- Prefer **reserved capacity / savings plans / Hybrid Benefit** for steady Windows workloads where relevant.
-
 ### When to use AKS vs Container Apps vs App Service
 
 | Requirement | Best answer |
@@ -523,7 +660,8 @@ Import-AzAksCredential -ResourceGroupName "rg-platform-prod" -Name "aks-prod-eas
 
 ---
 
-## 5. Azure App Service
+<a id="7-azure-app-service"></a>
+## 7. Azure App Service
 
 App Service is the exam-favorite PaaS answer for **web apps and APIs** when you want **minimal infrastructure management**.
 
@@ -582,7 +720,7 @@ Best when the scenario says:
 - **VNet Integration** = outbound app access into a VNet
 - **Private Endpoint** = inbound private access to the app
 
-### Hybrid connections
+### Hybrid Connections
 
 Use Hybrid Connections when you need simple outbound connectivity from App Service to specific on-prem endpoints **without full VNet integration**.
 
@@ -652,7 +790,8 @@ New-AzWebAppSlot -ResourceGroupName "rg-app-prod" -Name "webapp-contoso-prod" -S
 
 ---
 
-## 6. Azure Container Apps
+<a id="8-azure-container-apps"></a>
+## 8. Azure Container Apps
 
 Azure Container Apps is the best answer when you want **serverless containers** with **managed scaling** and **reduced operational complexity**.
 
@@ -664,7 +803,7 @@ Container Apps gives you:
 - scale to zero
 - simplified operations compared to AKS
 
-### Container Apps Environment
+### Container Apps environment
 
 The environment is the shared boundary for:
 - networking
@@ -762,7 +901,8 @@ New-AzContainerApp -ResourceGroupName "rg-containers-prod" -Name "api-orders-pro
 
 ---
 
-## 7. Azure Container Instances (ACI)
+<a id="9-azure-container-instances-aci"></a>
+## 9. Azure Container Instances (ACI)
 
 ACI is the simplest Azure container runtime for **single containers or small container groups** that must start quickly without orchestration.
 
@@ -845,7 +985,8 @@ Get-AzContainerGroup -ResourceGroupName "rg-containers-prod" -Name "aci-test-run
 
 ---
 
-## 8. Azure Functions
+<a id="10-azure-functions"></a>
+## 10. Azure Functions
 
 Azure Functions is the FaaS answer for **event-driven code execution** with minimal infrastructure management.
 
@@ -952,7 +1093,8 @@ New-AzAppServicePlan -ResourceGroupName "rg-serverless-prod" -Name "plan-func-pr
 
 ---
 
-## 9. Azure Batch
+<a id="11-azure-batch"></a>
+## 11. Azure Batch
 
 Azure Batch is purpose-built for **large-scale parallel processing** and **HPC-style job scheduling**.
 
@@ -1035,35 +1177,135 @@ Get-AzBatchJob -BatchContext $batch
 
 ---
 
-## 10. Compute Decision Matrix
+<a id="12-availability--resilience"></a>
+## 12. Availability & Resilience
 
-| Service | Typical scenario | Scaling model | Cost model | Best for |
-|---|---|---|---|---|
-| **Virtual Machines** | Lift-and-shift, legacy enterprise app, custom OS dependency | Manual or scripted / scale set assisted | Pay-as-you-go, RI, Savings Plan, Spot | Full control and legacy compatibility |
-| **VMSS** | Stateless web/app tier with autoscaling | Manual, scheduled, metric-based, predictive | VM-based with RI/Spot opportunities | Large fleets of similar VMs |
-| **AKS** | Kubernetes microservices, platform engineering | Pod autoscale + cluster autoscale + KEDA | Pay for nodes/storage/network, optional paid tier | Full K8s orchestration |
-| **App Service** | Web apps and APIs | Scale up/out, autoscale rules | App Service Plan based | PaaS web hosting with minimal ops |
-| **Container Apps** | Serverless containers, APIs, event-driven microservices | KEDA-based, HTTP/event, scale to zero | Consumption-style container billing | Managed container platform without AKS complexity |
-| **ACI** | One-off containers, burst jobs, build/test runners | Instance-level only | Per-second container billing | Fast, simple container execution |
-| **Functions** | Event-driven code, timers, queues, lightweight APIs | Automatic event-driven scale | Consumption, Premium, or App Service plan | FaaS and orchestration with Durable Functions |
-| **Batch** | HPC, rendering, simulation, scheduled large job farms | Pool/task driven autoscale | Underlying VM/storage/network cost | Parallel processing at scale |
+### Availability Sets
 
-### Quick comparison summary
+Availability Sets protect against host and maintenance failures **within a single datacenter**.
 
-| Requirement | Best answer |
+| Concept | Meaning | Exam note |
+|---|---|---|
+| **Fault domains (FDs)** | Separate physical racks/power/network boundaries | Protect from rack-level failure |
+| **Update domains (UDs)** | Groups rebooted separately during planned maintenance | Protect from simultaneous maintenance reboot |
+
+- Use when the scenario needs **resiliency in one datacenter** and zones are not required/available.
+- Common AZ-305 distinction: **Availability Set ≠ datacenter isolation**.
+
+### Availability Zones
+
+Availability Zones place instances in **physically separate datacenters** within a region.
+
+- Best for production HA requiring **datacenter-level isolation**.
+- Use **zone-redundant architecture** when the question mentions failure of a full datacenter.
+- Combine with **Load Balancer**, **Application Gateway**, **Front Door**, or zone-redundant platform services where relevant.
+
+### Proximity Placement Groups (PPG)
+
+Use PPG when the exam stresses:
+- **ultra-low latency** between VMs
+- tightly coupled app/database tiers
+- trading some placement flexibility for co-location
+
+Best fit: trading systems, HPC clusters, latency-sensitive app tiers.
+
+### Dedicated Hosts
+
+Use Azure Dedicated Hosts when you need:
+- host-level isolation
+- compliance or regulatory control
+- software licensing tied to physical cores/sockets
+- maintenance visibility over dedicated hardware
+
+### Azure Site Recovery (ASR)
+
+Use ASR when the scenario requires:
+- region-to-region replication
+- orchestrated failover and failback
+- disaster recovery testing
+- business continuity for VM-based workloads
+
+> 🔑 **Critical distinction:** **Azure Backup** helps recover data. **Azure Site Recovery** helps recover service availability.
+
+### Multi-region compute patterns
+
+| Requirement | Common pattern |
 |---|---|
-| Full OS control | **VMs** |
-| Autoscaling identical VM fleet | **VMSS** |
-| Full Kubernetes ecosystem | **AKS** |
-| Simplest enterprise web app hosting | **App Service** |
-| Serverless containers | **Container Apps** |
-| Fast one-off containers | **ACI** |
-| Event-driven code execution | **Functions** |
-| Parallel compute farm | **Batch** |
+| Global web app with regional failover | App Service or AKS in multiple regions behind **Azure Front Door** |
+| Regional VM app with DR site | Primary VMs + **ASR** to secondary region |
+| Highly available zone-aware VM fleet | **VMSS across zones** + load balancing |
+| Mission-critical PaaS web app | Zone-redundant **App Service** or **Container Apps/AKS** design where supported |
+
+### Resilience takeaways
+
+- **Availability Set** = same datacenter resilience.
+- **Availability Zone** = datacenter isolation inside a region.
+- **Multi-region** = regional disaster scenario protection.
+- **PPG** = latency optimization, not HA.
+- **Dedicated Host** = isolation/compliance, not automatically the cheapest or simplest design.
 
 ---
 
-## 11. AZ-305 Decision Scenarios
+<a id="13-cost-optimization"></a>
+## 13. Cost Optimization
+
+### Spot VMs
+
+| Item | Key fact |
+|---|---|
+| Best for | Interruptible workloads, stateless jobs, batch, test farms |
+| Not for | Mission-critical stateful workloads |
+| Eviction policy | **Deallocate** or **Delete** |
+| Eviction triggers | Capacity pressure or max price policy |
+
+**Architect guidance:** Use Spot when workloads can checkpoint, retry, or tolerate interruption.
+
+### Reserved Instances
+
+| Term | Best for | Benefit | Tradeoff |
+|---|---|---|---|
+| **1-year RI** | Predictable medium-term workloads | Solid savings with shorter commitment | Less savings than 3-year |
+| **3-year RI** | Stable long-running workloads | Highest savings | Longest commitment |
+
+Key facts:
+- Scope can be **shared** or **single subscription**.
+- Instance size flexibility may apply within a VM family, improving utilization.
+- Use RIs for **steady-state production**; avoid for uncertain or short-lived workloads.
+
+### Savings Plans for Compute
+
+Use **Azure Savings Plan for Compute** when the organization wants commitment-based savings with **more flexibility than Reserved Instances**. It applies to eligible compute usage across services and is often the better answer when workloads move between VM families, regions, or services over time.
+
+| Option | Best for | Tradeoff |
+|---|---|---|
+| **Reserved Instances** | Stable, specific VM footprint | Highest fit when usage is predictable and fixed |
+| **Savings Plan** | Variable but steady compute spend | More flexible, sometimes slightly less savings than the best RI fit |
+
+### Azure Hybrid Benefit
+
+Use Azure Hybrid Benefit to reuse eligible on-premises Windows Server or SQL Server licenses with Software Assurance / qualifying subscription benefits.
+
+**Exam trigger words:** existing Windows licenses, reduce licensing cost, SQL Server on Azure VM, bring your own license.
+
+### Service-specific cost notes
+
+- **AKS**: use **Spot node pools**, right-size system/user pools separately, and use **cluster autoscaler** to avoid idle nodes.
+- **App Service / Functions Dedicated / Premium**: commitments may benefit from **Savings Plans** for steady workloads.
+- **Container Apps / Functions Consumption**: pay for active usage; strong fit for spiky or low-utilization workloads.
+- **Batch**: use low-priority or Spot-style pool capacity where interruption is acceptable.
+
+### Cost optimization takeaways
+
+- **Spot** = biggest discount, highest interruption risk.
+- **Reserved Instances** = strongest answer for predictable 24x7 workloads.
+- **Savings Plans** = flexible commitment model across eligible compute.
+- **Azure Hybrid Benefit** = licensing savings on top of compute optimization.
+- Combining **RI + Azure Hybrid Benefit** is often the strongest steady-state Windows VM answer.
+
+---
+
+<a id="14-az-305-decision-scenarios"></a>
+## 14. AZ-305 Decision Scenarios
 
 ### Scenario 1: Web app hosting decision
 **Situation:** A company needs a public .NET web app with deployment slots, Entra ID auth, autoscale, and minimal admin overhead.  
@@ -1135,9 +1377,7 @@ Get-AzBatchJob -BatchContext $batch
 **Best answer:** **VMSS**  
 **Why:** Fleet management, autoscale, and upgrade controls without app refactoring.
 
----
-
-## 12. Quick Reference Trigger Table
+### Quick Reference Trigger Table
 
 | # | Trigger phrase in the question | Best answer | Why |
 |---|---|---|---|
@@ -1180,83 +1420,167 @@ Get-AzBatchJob -BatchContext $batch
 
 ---
 
-## 13. Common Exam Traps
+<a id="15--final-az-305-exam-tips"></a>
+## 15. 🎯 Final AZ-305 Exam Tips
 
-### 1. VMSS Uniform vs Flexible confusion
+1. **Default to managed services first.** If App Service, Container Apps, or Functions can meet the requirement, they often beat VMs on the exam because of lower operational overhead.
+2. **Use VMs only when you truly need OS-level control.** Trigger phrases include lift-and-shift, custom drivers, special agents, domain join, or legacy software.
+3. **Separate AKS from “just containers.”** Choose AKS only when Kubernetes itself is required; otherwise Container Apps is often the better answer.
+4. **Remember the App Service networking directionality.** VNet Integration is outbound; Private Endpoint is inbound.
+5. **Know the resilience ladder.** Availability Set = same datacenter, Availability Zone = datacenter isolation, multi-region = region failure protection.
+6. **Match VM family to workload shape quickly.** B = burstable, D = general-purpose, E/M = memory, F/H = compute/HPC, N = GPU, L = storage.
+7. **Don’t misuse Spot.** It is for interruptible, retry-friendly workloads only.
+8. **For predictable 24x7 compute, think commitment savings.** Reserved Instances and Savings Plans are common cost optimization answers; add Azure Hybrid Benefit if licensing fits.
+9. **Use Functions Premium when cold start or private networking matters.** Consumption is not always the right serverless answer.
+10. **Batch beats generic compute for massive parallel jobs.** If the question mentions rendering, simulations, or thousands of parallel tasks, think Azure Batch.
+
+### Common exam traps
+
+#### 1. VMSS Uniform vs Flexible confusion
 - **Wrong mindset:** VMSS is always only for identical instances.
 - **Correct mindset:** **Uniform** is the classic identical fleet model; **Flexible** supports more heterogeneous and VM-like deployments.
 
-### 2. Availability Set vs Availability Zone confusion
+#### 2. Availability Set vs Availability Zone confusion
 - **Wrong mindset:** Availability Set protects against datacenter failure.
 - **Correct mindset:** Availability Set protects from **host/rack/update** issues inside one datacenter; Zones protect across datacenters in a region.
 
-### 3. AKS networking model decision
+#### 3. AKS networking model decision
 - **Wrong mindset:** kubenet is always the cheapest/best answer.
 - **Correct mindset:** if the scenario needs **Windows nodes**, **advanced networking**, or **direct VNet integration**, Azure CNI is usually the safer answer.
 
-### 4. App Service Plan tier selection
+#### 4. App Service Plan tier selection
 - **Wrong mindset:** Basic is enough for most production workloads.
 - **Correct mindset:** production answers often land on **Standard** or **Premium** because of autoscale, slots, networking, and resilience needs.
 
-### 5. App Service VNet directionality
+#### 5. App Service VNet directionality
 - **Wrong mindset:** VNet Integration gives private inbound access.
 - **Correct mindset:** **VNet Integration = outbound**; **Private Endpoint = inbound**.
 
-### 6. Functions Consumption cold start issues
+#### 6. Functions Consumption cold start issues
 - **Wrong mindset:** Consumption is always the best serverless answer.
 - **Correct mindset:** if the app needs **predictable latency** or **private networking**, prefer **Premium**.
 
-### 7. Container Apps vs AKS decision
+#### 7. Container Apps vs AKS decision
 - **Wrong mindset:** Any containerized app should go to AKS.
 - **Correct mindset:** use AKS only when Kubernetes capability is truly required; otherwise Container Apps may be the better operational choice.
 
-### 8. ACI vs Container Apps decision
+#### 8. ACI vs Container Apps decision
 - **Wrong mindset:** ACI is a general microservices platform.
 - **Correct mindset:** ACI is best for **simple, short-lived containers**; Container Apps is better for app-style scaling and traffic.
 
-### 9. Backup vs DR confusion
+#### 9. Backup vs DR confusion
 - **Wrong mindset:** Azure Backup alone solves disaster recovery.
 - **Correct mindset:** Backup protects data recovery; **Site Recovery** addresses failover/orchestration.
 
-### 10. Spot VM misuse
+#### 10. Spot VM misuse
 - **Wrong mindset:** Spot is a universal cost optimization for production.
 - **Correct mindset:** only use Spot where interruption is acceptable and the app can retry or recover.
 
-### 11. Reserved capacity misuse
+#### 11. Reserved capacity misuse
 - **Wrong mindset:** Reserved Instances are best for every workload.
 - **Correct mindset:** use reservations for **predictable steady-state** workloads, not uncertain short-lived projects.
 
-### 12. PPG misuse
+#### 12. PPG misuse
 - **Wrong mindset:** Proximity Placement Groups improve resiliency.
 - **Correct mindset:** PPG is primarily about **low latency**, not HA.
 
-### 13. Batch vs Functions confusion
+#### 13. Batch vs Functions confusion
 - **Wrong mindset:** Functions is the default for any parallel workload.
 - **Correct mindset:** Batch is the better answer for **large-scale scheduled parallel compute**.
 
-### 14. App Service Environment overuse
+#### 14. App Service Environment overuse
 - **Wrong mindset:** ASE is the default secure App Service answer.
 - **Correct mindset:** ASE is a premium isolation answer; choose it only when dedicated isolated hosting is explicitly needed.
 
-### 15. Serverless vs PaaS over-rotation
+#### 15. Serverless vs PaaS over-rotation
 - **Wrong mindset:** Functions beats App Service for every web/API scenario.
 - **Correct mindset:** App Service is often better for long-running web apps and APIs; Functions is for event-driven execution.
 
----
-
-## Final Revision Checklist
+### Final revision checklist
 
 - [ ] Can I explain when to choose **VMs, VMSS, AKS, App Service, Container Apps, ACI, Functions, and Batch**?
 - [ ] Do I remember **Availability Set vs Availability Zone vs multi-region**?
 - [ ] Can I match **VM family** to workload shape quickly?
-- [ ] Do I know when **Spot, Reserved Instances, and Hybrid Benefit** apply?
+- [ ] Do I know when **Spot, Reserved Instances, Savings Plans, and Hybrid Benefit** apply?
 - [ ] Can I explain **AKS networking choices** and when Azure CNI is preferred?
 - [ ] Do I remember **App Service slots**, **Easy Auth**, and **VNet directionality**?
 - [ ] Can I explain **Functions Consumption vs Premium vs Dedicated**?
 - [ ] Do I know when **Batch** is more appropriate than Functions or VMs?
 
-## 3 Exam-Style Review Questions
+---
 
-1. A company must host a public API with deployment slots, built-in authentication, and minimal infrastructure management. Which compute service is the best fit, and why is it preferable to AKS?
-2. A workload needs thousands of GPU-backed tasks to run overnight at the lowest possible cost, and tasks can be retried if interrupted. Which Azure compute option is best, and what pricing model strengthens the recommendation?
-3. A team is deploying containerized microservices and needs scale-to-zero, KEDA-based queue scaling, and no requirement for kubectl access. Which service is the best fit, and what key exam trap should you avoid?
+<a id="16--architecture-decision-flowchart"></a>
+## 16. 📐 Architecture Decision Flowchart
+
+```text
+                           ┌───────────────────────────────┐
+                           │   Start with requirements     │
+                           └───────────────┬───────────────┘
+                                           │
+                     ┌─────────────────────▼─────────────────────┐
+                     │ Need full OS control or legacy support?  │
+                     └───────────────┬───────────────────────────┘
+                                     │
+                          ┌──────────▼──────────┐
+                          │ YES → VMs / VMSS    │
+                          └──────────┬──────────┘
+                                     │
+                    ┌────────────────▼─────────────────┐
+                    │ Need autoscaling VM fleet?       │
+                    └───────────────┬──────────────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │ YES → VMSS          │
+                         │ NO  → Individual VM │
+                         └─────────────────────┘
+                                     │
+                                     NO
+                                     │
+              ┌──────────────────────▼──────────────────────┐
+              │ Is the workload containerized?              │
+              └───────────────┬─────────────────────────────┘
+                              │
+                ┌─────────────▼─────────────┐
+                │ NO                        │ YES
+                ▼                           ▼
+   ┌───────────────────────────┐   ┌────────────────────────────────┐
+   │ Event-driven / sporadic?  │   │ Need Kubernetes control plane? │
+   └──────────────┬────────────┘   └──────────────┬─────────────────┘
+                  │                               │
+        ┌─────────▼─────────┐           ┌────────▼────────┐
+        │ YES → Functions   │           │ YES → AKS       │
+        └─────────┬─────────┘           └────────┬────────┘
+                  │                               │
+                  │                    ┌──────────▼──────────┐
+                  │                    │ Need simple server-  │
+                  │                    │ less containers?     │
+                  │                    └──────────┬──────────┘
+                  │                               │
+        ┌─────────▼─────────┐           ┌─────────▼──────────┐
+        │ NO → App Service  │           │ YES → Container    │
+        │   (web/API)       │           │ Apps               │
+        └───────────────────┘           └─────────┬──────────┘
+                                                   │
+                                      ┌────────────▼────────────┐
+                                      │ One-off container job?  │
+                                      └────────────┬────────────┘
+                                                   │
+                                         ┌─────────▼─────────┐
+                                         │ YES → ACI         │
+                                         └───────────────────┘
+
+Extra decision: if the requirement says **thousands of parallel tasks / rendering / simulation**, branch directly to **Azure Batch**.
+```
+
+---
+
+<a id="17-exam-style-review-questions"></a>
+## 17. Exam-Style Review Questions
+
+1. A company is migrating a legacy Windows application that requires OS-level customization, domain join, and a custom monitoring agent. Which Azure compute option is the best fit, and why would App Service be a poor choice?
+2. A team has containerized microservices and needs Dapr, KEDA-based queue scaling, revision-based rollbacks, and scale-to-zero, but does not want to operate Kubernetes. Which service should they choose, and why is AKS not the best answer?
+3. An organization needs a public API with deployment slots, built-in Entra ID authentication, autoscale, and minimal management overhead. Which service should they select, and what two features make it stand out on AZ-305?
+4. A scientific workload must run thousands of parallel simulations overnight using low-cost interruptible compute, and failed work can be retried. Which Azure service and pricing approach should you recommend?
+5. A queue-triggered serverless workflow must access private resources inside a VNet and avoid cold starts during peak business hours. Which Functions hosting plan is most appropriate, and why?
+
+*Last Updated: 2025 | Target: AZ-305 Designing Microsoft Azure Infrastructure Solutions*

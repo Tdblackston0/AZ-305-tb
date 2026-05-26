@@ -1,17 +1,97 @@
+# Azure Backup - AZ-305 Comprehensive Cheat Sheet
+
 > 📝 **Hands-On Labs:** [Backup Labs](./Labs/Azure-Backup-Labs.md)
 
-# Azure Backup Cheat Sheet + AZ-305 Exam Prep
+> 🎯 **Exam Focus:** AZ-305 tests your ability to **design** backup solutions with appropriate RPO, retention, security, and compliance requirements.
 
-**Audience:** Senior Cloud Solution Architect  
-**Primary exam domain:** Design business continuity solutions (15-20%)  
-**Secondary domains:** Data storage; identity, governance, and monitoring  
-**Use this for:** backup architecture decisions, vault selection, RPO/RTO mapping, security controls, restore design, and fast exam revision
+## Table of Contents
 
-> 🎯 **Senior Architect view:** AZ-305 backup questions are rarely about memorizing a menu path. They test whether you can design the **right protection model** for the workload while balancing **RPO, RTO, compliance, security, cost, and operations**.
+- [1. Azure Backup Family Overview](#1-azure-backup-family-overview)
+- [2. When to Choose Which — Decision Tree](#2-when-to-choose-which-decision-tree)
+- [3. Recovery Services Vault](#3-recovery-services-vault)
+- [4. Azure VM Backup](#4-azure-vm-backup)
+- [5. Azure SQL Backup](#5-azure-sql-backup)
+- [6. Azure Files Backup](#6-azure-files-backup)
+- [7. Azure Blob Backup](#7-azure-blob-backup)
+- [8. Other Workload Backup](#8-other-workload-backup)
+- [9. Backup Policies and Retention](#9-backup-policies-and-retention)
+- [10. Availability & Resilience](#10-availability-resilience)
+- [11. Cost Optimization](#11-cost-optimization)
+- [12. Restore Operations](#12-restore-operations)
+- [13. Backup Security](#13-backup-security)
+- [14. Backup Monitoring and Reporting](#14-backup-monitoring-and-reporting)
+- [15. AZ-305 Decision Scenarios](#15-az-305-decision-scenarios)
+- [16. Quick Reference Trigger Table](#16-quick-reference-trigger-table)
+- [17. Common Exam Traps](#17-common-exam-traps)
+- [18. 🎯 Final AZ-305 Exam Tips](#18-final-az-305-exam-tips)
+- [19. 📐 Architecture Decision Flowchart](#19-architecture-decision-flowchart)
+- [20. Exam-Style Review Questions](#20-exam-style-review-questions)
 
 ---
 
-## 1. Azure Backup Overview
+<a id="1-azure-backup-family-overview"></a>
+## 1. Azure Backup Family Overview
+
+### Comparison Table
+
+| Capability | Recovery Services Vault | Backup Vault | VM Backup | SQL Backup | Azure Files Backup | Azure Blob Backup |
+|---------|---------------------------|--------------|-----------|------------|--------------------|-------------------|
+| **Primary purpose** | Central vault for classic Azure Backup workloads and Site Recovery metadata | Central vault for newer Azure Data Protection workloads | Policy-based protection for full Azure VMs | Database-aware protection for Azure SQL PaaS or SQL Server in Azure VM | Snapshot-based protection for Azure file shares | Operational or vaulted protection for blob data |
+| **Typical control plane** | `az backup` / Az.RecoveryServices | `az dataprotection` / Az.DataProtection | Recovery Services Vault policies | Native SQL backups or Recovery Services Vault for SQL in VM | Recovery Services Vault | Backup Vault |
+| **Best fit** | Traditional enterprise backup governance | Modern data protection for blobs, disks, AKS, PostgreSQL | Full-machine recovery and fast file restore | PITR, LTR, log backups, workload-aware restore | Share and item-level restore | Point-in-time blob recovery and isolated retention |
+| **Low-RPO capability** | Depends on workload and policy | Depends on workload type | Better with enhanced policies, but not continuous DR | Strongest option when log backups/PITR are available | Good for share-level operational recovery | Strong for accidental overwrite/delete scenarios |
+| **Typical restore granularity** | VM, file, database, share, app-aware item | Disk, blob, AKS object/PV, PostgreSQL item | Entire VM or selected files | Database, transaction-log point-in-time, long-term copy | Share, folder, file | Container/account point-in-time scope depending on design |
+| **Common exam trigger** | “Back up Azure VM / Azure Files / SQL in VM” | “Protect blobs, disks, AKS, or modern data sources” | “Recover the VM or a few files quickly” | “Need lower RPO, PITR, or 7-year retention” | “Recover a folder without full share restore” | “Blob overwrite/delete with PITR and governance” |
+
+### Recovery Services Vault
+A **Recovery Services Vault (RSV)** is the classic Azure Backup control plane for Azure VMs, Azure Files, SQL Server in Azure VM, SAP HANA in Azure VM, and many hybrid workloads. It also stores Azure Site Recovery metadata, which makes it the default enterprise answer when the exam describes centralized backup administration for established Azure workloads.
+
+**Real-World Examples:**
+- A **banking platform** protects 200 production VMs with daily backups, instant restore, and strict RBAC from one central Recovery Services Vault.
+- A **healthcare provider** backs up SQL Server running in Azure VMs with log backups to meet a 15-minute RPO for patient scheduling databases.
+- A **hybrid manufacturer** uses MARS/MABS with a Recovery Services Vault to retain on-premises server backups in Azure for audit recovery.
+
+### Backup Vault
+A **Backup Vault** is the newer Azure Data Protection vault used for modern workloads such as Azure Blobs, Azure Managed Disks, AKS backups, and supported PostgreSQL scenarios. Use it when the requirement points to newer platform data protection capabilities rather than classic Azure Backup workflows.
+
+**Real-World Examples:**
+- A **media company** protects large blob datasets with vaulted backup so ransomware on the source account cannot immediately destroy retained recovery points.
+- A **platform engineering team** backs up AKS persistent volumes and Kubernetes objects before cluster upgrades.
+- A **SaaS provider** protects managed disks independently because only the data disks matter and full-VM backup would cost more.
+
+### Azure VM Backup
+**Azure VM Backup** captures full virtual machine protection using policy-driven snapshots plus vault retention. It is best when you need workload recovery for the VM as a machine, or quick file recovery from the VM backup without redesigning the application.
+
+**Real-World Examples:**
+- A **line-of-business app** on two Azure VMs needs daily backups plus instant restore for fast rollback after a failed patch.
+- A **dev/test lab** protects non-critical VMs with LRS and short retention because rebuild speed matters more than geo-restore.
+- A **retail branch server** uses enhanced VM backup policy to take multiple backups per day without deploying full DR tooling.
+
+### Azure SQL Backup
+**Azure SQL Backup** covers both native service-managed backups for Azure SQL Database/Managed Instance and workload-aware backup for SQL Server in Azure VM. It becomes the right design when the business requirement is framed in terms of **PITR, LTR, log backup frequency, or database-level recovery** rather than VM image recovery.
+
+**Real-World Examples:**
+- A **finance database** on Azure SQL Database uses PITR for 35 days and LTR for 7 years to satisfy audit retention requirements.
+- An **ERP workload** running SQL Server in Azure VM relies on log backups every 15 minutes so the RPO is far lower than once-per-day VM backup.
+- A **software vendor** restores one database to an alternate location for forensic validation after accidental data corruption.
+
+### Azure Files Backup
+**Azure Files Backup** protects file shares with share snapshots and Recovery Services Vault governance. It is the best answer when the exam emphasizes **item-level restore, user file recovery, or restoring folders without rebuilding a VM**.
+
+**Real-World Examples:**
+- A **legal department** restores a single folder from a share after a user accidentally deletes case files.
+- A **regional office** protects shared departmental file shares with daily backups and monthly retention for audit support.
+- A **construction firm** uses item-level recovery to restore project drawings without interrupting the full share.
+
+### Azure Blob Backup
+**Azure Blob Backup** protects object data with operational backup and/or vaulted backup depending on the recovery and governance requirement. It is usually the best answer when the scenario mentions **blob overwrite, accidental delete, point-in-time restore, or isolated retention for unstructured data**.
+
+**Real-World Examples:**
+- A **data lake team** uses blob point-in-time restore to recover from a bad ETL job that overwrote recent parquet files.
+- An **insurance company** enables vaulted backup for claim documents so copies remain protected even if the source storage account is compromised.
+- A **digital publishing platform** relies on operational backup for fast rollback of frequently updated media assets.
+
+> 💡 **AZ-305 Tip:** Start by identifying the **workload type** first, then decide whether the design needs **classic backup governance (RSV)**, **modern data protection (Backup Vault)**, or **native service backup** such as Azure SQL PITR/LTR.
 
 ### Backup vs disaster recovery
 
@@ -64,7 +144,57 @@ Get-AzDataProtectionBackupVault
 
 ---
 
-## 2. Recovery Services Vault
+<a id="2-when-to-choose-which-decision-tree"></a>
+## 2. When to Choose Which — Decision Tree
+
+```
+Start
+ |
+ +-- Is the requirement mainly backup of classic Azure workloads such as VMs,
+ |   Azure Files, SQL Server in Azure VM, SAP HANA in Azure VM, or hybrid servers?
+ |      |
+ |      +-- YES --> Use Recovery Services Vault first
+ |      |             |
+ |      |             +-- Need full machine recovery or file recovery from a VM?
+ |      |             |      +-- YES --> Azure VM Backup
+ |      |             |
+ |      |             +-- Need database-aware restore with low RPO?
+ |      |             |      +-- YES --> SQL Server in Azure VM workload backup
+ |      |             |
+ |      |             +-- Need share/folder/file restore?
+ |      |                    +-- YES --> Azure Files Backup
+ |      |
+ |      +-- NO --> Is the workload blob data, managed disks, AKS, or a newer
+ |                 Azure Data Protection scenario?
+ |                     |
+ |                     +-- YES --> Use Backup Vault first
+ |                     |             |
+ |                     |             +-- Blob overwrite/delete/PITR? --> Azure Blob Backup
+ |                     |             +-- Disk-only protection? -------> Managed Disk Backup
+ |                     |             +-- AKS persistent volume state? -> AKS Backup
+ |                     |
+ |                     +-- NO --> Is it Azure SQL Database or SQL Managed Instance?
+ |                                   |
+ |                                   +-- YES --> Use native Azure SQL backups (PITR/LTR)
+ |                                   +-- NO --> Re-check whether the requirement is really
+ |                                              backup, or if it is a DR/failover question
+```
+
+### Quick Decision Matrix
+
+| Scenario | Best starting design |
+|---|---|
+| Protect Azure VM and restore whole server or files | Recovery Services Vault + Azure VM Backup |
+| Need low-RPO SQL recovery inside a VM | Recovery Services Vault + SQL workload backup |
+| Need Azure SQL Database retention/compliance | Native PITR + LTR |
+| Need item-level restore for file shares | Recovery Services Vault + Azure Files Backup |
+| Need blob PITR or isolated object retention | Backup Vault + Azure Blob Backup |
+| Need AKS persistent volume protection | Backup Vault + AKS backup |
+| Need regional app availability in minutes | Azure Site Recovery / geo-replication, not backup alone |
+
+
+<a id="3-recovery-services-vault"></a>
+## 3. Recovery Services Vault
 
 Recovery Services Vault is the central management plane for many Azure Backup workloads and for Site Recovery metadata.
 
@@ -142,7 +272,8 @@ Get-AzRecoveryServicesVault -ResourceGroupName "rg-backup" -Name "rsv-prod-eastu
 
 ---
 
-## 3. Azure VM Backup
+<a id="4-azure-vm-backup"></a>
+## 4. Azure VM Backup
 
 Azure VM Backup protects entire VMs using policy-driven backup with snapshot and vault integration.
 
@@ -226,7 +357,8 @@ Get-AzRecoveryServicesBackupRecoveryPoint -Item $item[0] -StartDate (Get-Date).A
 
 ---
 
-## 4. Azure SQL Backup
+<a id="5-azure-sql-backup"></a>
+## 5. Azure SQL Backup
 
 ### SQL Database automated backup (PITR)
 
@@ -289,7 +421,8 @@ Set-AzSqlDatabaseBackupLongTermRetentionPolicy -ResourceGroupName "rg-data" -Ser
 
 ---
 
-## 5. Azure Files Backup
+<a id="6-azure-files-backup"></a>
+## 6. Azure Files Backup
 
 Azure Files backup uses **share snapshots** coordinated by Azure Backup.
 
@@ -339,7 +472,8 @@ Get-AzRecoveryServicesBackupRecoveryPoint -Item $fileItem -StartDate (Get-Date).
 
 ---
 
-## 6. Azure Blob Backup
+<a id="7-azure-blob-backup"></a>
+## 7. Azure Blob Backup
 
 Azure Blob protection has two major design patterns.
 
@@ -395,7 +529,8 @@ Get-AzStorageBlobServiceProperty -ResourceGroupName "rg-storage" -StorageAccount
 
 ---
 
-## 7. Other Workload Backup
+<a id="8-other-workload-backup"></a>
+## 8. Other Workload Backup
 
 ### SAP HANA backup
 
@@ -448,7 +583,8 @@ Get-AzPostgreSqlFlexibleServer
 
 ---
 
-## 8. Backup Policies and Retention
+<a id="9-backup-policies-and-retention"></a>
+## 9. Backup Policies and Retention
 
 ### Daily, weekly, monthly, yearly retention
 
@@ -508,7 +644,61 @@ Get-AzRecoveryServicesBackupProtectionPolicy
 
 ---
 
-## 9. Restore Operations
+<a id="10-availability-resilience"></a>
+## 10. Availability & Resilience
+
+Backup architecture decisions are really **resilience decisions**: choose the backup storage redundancy, restore geography, and restore speed that align to business RPO/RTO instead of assuming every workload needs the most expensive option.
+
+### Redundancy Comparison
+
+| Option | What it protects against | Best use | Key tradeoff |
+|---|---|---|---|
+| **LRS** | Local storage faults in one datacenter | Lowest-cost dev/test or non-critical workloads | No zone or cross-region resilience |
+| **ZRS** | Zonal failure within a region | Workloads needing in-region zonal durability | No cross-region restore |
+| **GRS** | Regional durability via paired-region copy | Critical workloads needing backup-based geo-restore | Highest vault cost and paired-region dependency |
+
+### Cross-Region Restore (CRR)
+
+- **CRR requires GRS** for supported workloads and is the clearest exam signal for backup-based recovery in another region.
+- CRR helps when the question says **restore in another region**; it is **not** the right answer when the question says **keep the app online during an outage**.
+- Expect slower recovery than replication-based DR because backup recovery still involves restore operations, not immediate failover.
+
+### Resilience Design Rules
+
+1. Use **LRS** when cost is the priority and geo-recovery is not required.
+2. Use **ZRS** when the business wants zonal resilience but can accept recovery staying in the same region.
+3. Use **GRS + CRR** only for workloads that truly need backup-based paired-region recovery.
+4. Pair backup with **Azure Site Recovery, failover groups, or geo-replication** when the business requirement is low-RTO application continuity.
+
+> ⚠️ **AZ-305 Trap:** A vault with GRS does not make the application highly available. It only makes the **backup copies** more resilient.
+
+
+<a id="11-cost-optimization"></a>
+## 11. Cost Optimization
+
+### Primary Cost Levers
+
+| Cost lever | How to save | Watch out for |
+|---|---|---|
+| **Vault redundancy** | Prefer **LRS** unless geo-restore is a real business requirement | Overusing GRS for low-value workloads |
+| **Retention length** | Use GFS-style daily/weekly/monthly/yearly retention instead of keeping every daily backup forever | Compliance workloads may still require yearly retention |
+| **Instant restore retention** | Keep snapshot retention only as long as the target RTO needs | Longer snapshot retention increases cost |
+| **Selective disk backup** | Exclude rebuildable or non-critical disks | Never exclude a disk required for app recovery |
+| **Scope of protection** | Back up the data source that matters most (disk vs VM vs database) | Over-protecting whole machines can waste money |
+| **Workload tiering** | Give prod stronger redundancy and longer retention than dev/test | One-size-fits-all backup policies are usually inefficient |
+
+### Practical Optimization Patterns
+
+- Put **dev/test** workloads on shorter retention and LRS unless policy forbids it.
+- Choose **SQL workload backup** instead of VM-only backup when database recovery precision matters.
+- Use **native service backup** where available instead of layering unnecessary vault complexity.
+- Review **instant restore**, **GRS**, and **long retention** together because those are common backup cost multipliers.
+
+> 💡 **AZ-305 Tip:** The cheapest design is not always the best answer — but the exam often rewards the **least expensive design that still meets stated RPO, RTO, retention, and compliance requirements**.
+
+
+<a id="12-restore-operations"></a>
+## 12. Restore Operations
 
 ### Original location vs alternate location
 
@@ -555,7 +745,8 @@ Get-AzRecoveryServicesBackupRecoveryPoint -Item $item[0] -StartDate (Get-Date).A
 
 ---
 
-## 10. Backup Security
+<a id="13-backup-security"></a>
+## 13. Backup Security
 
 ### Soft delete protection
 
@@ -610,7 +801,8 @@ Set-AzRecoveryServicesBackupProperty -VaultId $vault.ID -SoftDeleteFeatureState 
 
 ---
 
-## 11. Backup Monitoring and Reporting
+<a id="14-backup-monitoring-and-reporting"></a>
+## 14. Backup Monitoring and Reporting
 
 ### Backup center
 
@@ -660,7 +852,8 @@ AddonAzureBackupJobs
 
 ---
 
-## 12. AZ-305 Decision Scenarios
+<a id="15-az-305-decision-scenarios"></a>
+## 15. AZ-305 Decision Scenarios
 
 | Scenario | Best answer | Why |
 |---|---|---|
@@ -685,7 +878,8 @@ AddonAzureBackupJobs
 
 ---
 
-## 13. Quick Reference Trigger Table
+<a id="16-quick-reference-trigger-table"></a>
+## 16. Quick Reference Trigger Table
 
 | Trigger phrase in the question | Think first | Why |
 |---|---|---|
@@ -718,7 +912,8 @@ AddonAzureBackupJobs
 
 ---
 
-## 14. Common Exam Traps
+<a id="17-common-exam-traps"></a>
+## 17. Common Exam Traps
 
 1. **Backup is not disaster recovery.** Azure Backup restores data; it does not keep the application running during an outage.
 2. **Recovery Services Vault is not the answer for every workload.** Newer workloads such as blobs, disks, and AKS often point to **Backup Vault**.
@@ -741,3 +936,63 @@ AddonAzureBackupJobs
 - Does the organization need **geo-restore**, **immutability**, **approval workflow**, or **private access**?  
 - Can you meet the requirement with **native platform backup** instead of adding unnecessary vault complexity?  
 - Are you paying for **GRS**, long retention, or snapshot retention only where the business actually needs it?
+
+---
+
+<a id="18-final-az-305-exam-tips"></a>
+## 🎯 Final AZ-305 Exam Tips
+
+1. Identify the **workload first**: VM, SQL in VM, Azure SQL PaaS, Files, Blob, AKS, Disk, or hybrid server.
+2. Separate **backup** questions from **DR/failover** questions before choosing a service.
+3. Match the design to explicit **RPO, RTO, retention, security, and compliance** requirements.
+4. Use **Recovery Services Vault** for classic workloads; use **Backup Vault** for newer Azure Data Protection scenarios.
+5. For Azure SQL Database/Managed Instance, think **native PITR/LTR** before adding vault-based designs.
+6. If the scenario says **ransomware** or **tamper resistance**, layer **soft delete + immutability + MUA**.
+7. If the scenario says **another region**, ask whether it means **restore** (backup) or **failover** (DR).
+8. Use **GRS + CRR** selectively; do not pay for geo-restore where the business never asked for it.
+9. Use **GFS retention** to balance operational recovery with long-term compliance.
+10. The best AZ-305 answer is usually the **simplest design that fully meets the stated business requirement**.
+
+---
+
+<a id="19-architecture-decision-flowchart"></a>
+## 📐 Architecture Decision Flowchart
+
+```
+Business requirement
+ |
+ +-- Need app availability during outage in minutes?
+ |      +-- YES --> Use DR/failover architecture (ASR, geo-replication, failover groups)
+ |      +-- NO --> Continue with backup design
+ |
+ +-- What workload is being protected?
+ |      +-- Azure VM ------------------> RSV + VM Backup
+ |      +-- SQL Server in Azure VM ----> RSV + SQL workload backup
+ |      +-- Azure SQL DB / MI ---------> Native PITR / LTR
+ |      +-- Azure Files ---------------> RSV + Files Backup
+ |      +-- Blob data -----------------> Backup Vault + Blob Backup
+ |      +-- AKS / Disk / PostgreSQL ---> Backup Vault or native backup
+ |
+ +-- Is geo-restore required?
+ |      +-- YES --> Consider GRS + CRR where supported
+ |      +-- NO --> Prefer LRS or ZRS based on resilience needs
+ |
+ +-- Are ransomware or compliance controls required?
+        +-- YES --> Add immutability, MUA, soft delete, private access as needed
+        +-- NO --> Keep the design lean and cost-aligned
+```
+
+---
+
+<a id="20-exam-style-review-questions"></a>
+## Exam-Style Review Questions
+
+1. A company must restore a critical Azure VM in a paired region after a regional outage, but it does not require active-active failover. What backup design best fits, and why is Azure Site Recovery not strictly required?
+2. A finance team needs 7-year retention for Azure SQL Database with minimal operational overhead. Should you recommend Recovery Services Vault, Backup Vault, or native SQL backups, and what retention feature matters most?
+3. An application stores user documents in Azure Blob Storage and needs rollback after accidental overwrite within the last 48 hours. Which Azure backup approach best fits, and why is soft delete alone not always enough?
+4. A business asks for the cheapest backup design for 50 dev/test VMs with no geo-restore requirement. Which redundancy and retention choices best control cost without violating the requirement?
+5. A regulated workload requires approval before disabling backup and must keep recovery points tamper-resistant. Which layered security controls should be designed into the backup architecture?
+
+---
+
+**Footer:** Pair this cheat sheet with [Backup Labs](./Labs/Azure-Backup-Labs.md). For every AZ-305 scenario, validate the design against **RPO, RTO, retention, security, compliance, and cost** before selecting the service.
