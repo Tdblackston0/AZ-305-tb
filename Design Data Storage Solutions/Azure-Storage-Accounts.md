@@ -68,6 +68,7 @@
 
 ---
 
+<a id="managed-disks--azure-file-sync-design"></a>
 ## Managed Disks & Azure File Sync Design
 
 ### Azure Managed Disks (IaaS VM Storage)
@@ -98,6 +99,26 @@
 - Enable **cloud tiering** to preserve local cache for hot files while keeping full data set in Azure Files
 - Use **volume free space policy** plus **date-based policy** to control local cache behavior
 - Deploy Storage Sync Service close to primary users and validate bandwidth/latency for branch offices
+
+### Azure File Sync IaC Starters
+
+```bicep
+param location string = resourceGroup().location
+param syncServiceName string
+
+resource syncService 'Microsoft.StorageSync/storageSyncServices@2022-09-01' = {
+  name: syncServiceName
+  location: location
+}
+```
+
+```hcl
+resource "azurerm_storage_sync" "sync" {
+  name                = var.storage_sync_service_name
+  resource_group_name = var.resource_group_name
+  location            = var.location
+}
+```
 
 > 🎯 **AZ-305 Tip:** If a scenario asks for branch office local performance + centralized cloud data + minimal user disruption, Azure File Sync is usually the best answer.
 

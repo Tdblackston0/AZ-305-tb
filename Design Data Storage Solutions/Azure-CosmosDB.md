@@ -195,7 +195,7 @@ Cosmos DB Account
 Allows up to 3 levels: e.g., `TenantId` → `UserId` → `SessionId`
 - Enables sub-partitioning for more granular distribution
 - Useful for multi-tenant scenarios with large tenants
-- Now generally available for production design patterns across supported APIs/regions
+- Generally available for Azure Cosmos DB for NoSQL in supported regions (verify current regional/API support before production rollout)
 
 ### Hot Partition Detection & Mitigation
 
