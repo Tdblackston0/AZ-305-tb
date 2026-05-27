@@ -9,15 +9,16 @@
 
 1. [Storage Account Types](#storage-account-types)
 2. [Storage Services Overview](#storage-services-overview)
-3. [Performance Tiers](#performance-tiers)
-4. [Access Tiers (Blob)](#access-tiers-blob)
-5. [Redundancy Options](#redundancy-options)
-6. [Security & Access Control](#security--access-control)
-7. [Networking](#networking)
-8. [Data Protection & Lifecycle](#data-protection--lifecycle)
-9. [Decision Scenarios (AZ-305 Style)](#decision-scenarios-az-305-style)
-10. [Pricing Considerations](#pricing-considerations)
-11. [Hands-On Labs](#hands-on-labs)
+3. [Managed Disks & Azure File Sync Design](#managed-disks--azure-file-sync-design)
+4. [Performance Tiers](#performance-tiers)
+5. [Access Tiers (Blob)](#access-tiers-blob)
+6. [Redundancy Options](#redundancy-options)
+7. [Security & Access Control](#security--access-control)
+8. [Networking](#networking)
+9. [Data Protection & Lifecycle](#data-protection--lifecycle)
+10. [Decision Scenarios (AZ-305 Style)](#decision-scenarios-az-305-style)
+11. [Pricing Considerations](#pricing-considerations)
+12. [Hands-On Labs](#hands-on-labs)
 
 ---
 
@@ -64,6 +65,62 @@
 - Hierarchical namespace on top of Blob storage
 - Big data analytics (Spark, Databricks, Synapse)
 - POSIX-compatible ACLs
+
+---
+
+<a id="managed-disks--azure-file-sync-design"></a>
+## Managed Disks & Azure File Sync Design
+
+### Azure Managed Disks (IaaS VM Storage)
+
+| Disk Type | Performance Profile | Best For | AZ-305 Design Notes |
+|-----------|---------------------|----------|---------------------|
+| **Standard HDD** | Lowest cost, baseline performance | Dev/test, infrequent access workloads | Lowest cost option when performance is not critical |
+| **Standard SSD** | Consistent baseline latency | Web apps, lightly used production workloads | Better latency than HDD at moderate cost |
+| **Premium SSD** | High IOPS and low latency | Production OLTP, enterprise apps | Default for most production VM disks |
+| **Premium SSD v2** | Independent scale of IOPS/throughput | Workloads with variable performance demand | Cost-optimize by sizing IOPS separately from capacity |
+| **Ultra Disk** | Highest IOPS/throughput, sub-ms latency | SAP HANA, top-tier databases | Use only for extreme performance requirements |
+
+### Managed Disk Roles
+- **OS disk:** Boot/system volume for a VM
+- **Data disk:** Persistent application and database data
+- **Temporary disk:** Ephemeral local disk; do not store durable data
+
+### Managed Disk Security & Availability
+- Encryption at rest with **platform-managed keys (PMK)** by default
+- **Customer-managed keys (CMK)** supported for stricter compliance requirements
+- **Disk Encryption Sets (DES)** centralize CMK assignment for fleets
+- Use **zone-redundant disks** where supported for higher intra-region resilience
+- Pair disks with VM backup and snapshot strategy for restore requirements
+
+### Azure File Sync Design Guidance
+- Use Azure File Sync when you need **ongoing hybrid synchronization**, not one-time migration
+- Keep **one cloud endpoint per sync group** and scale with multiple server endpoints
+- Enable **cloud tiering** to preserve local cache for hot files while keeping full data set in Azure Files
+- Use **volume free space policy** plus **date-based policy** to control local cache behavior
+- Deploy Storage Sync Service close to primary users and validate bandwidth/latency for branch offices
+
+### Azure File Sync IaC Starters
+
+```bicep
+param location string = resourceGroup().location
+param syncServiceName string
+
+resource syncService 'Microsoft.StorageSync/storageSyncServices@2022-09-01' = {
+  name: syncServiceName
+  location: location
+}
+```
+
+```hcl
+resource "azurerm_storage_sync" "sync" {
+  name                = var.storage_sync_service_name
+  resource_group_name = var.resource_group_name
+  location            = var.location
+}
+```
+
+> 🎯 **AZ-305 Tip:** If a scenario asks for branch office local performance + centralized cloud data + minimal user disruption, Azure File Sync is usually the best answer.
 
 ---
 

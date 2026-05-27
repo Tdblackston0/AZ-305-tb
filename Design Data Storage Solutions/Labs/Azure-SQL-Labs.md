@@ -7,6 +7,58 @@
 
 ---
 
+## Infrastructure as Code Starter Templates (Bicep & Terraform)
+
+Use these snippets to provision baseline SQL lab infrastructure before running step-by-step commands.
+
+```bicep
+param location string = resourceGroup().location
+param sqlServerName string
+param adminUser string
+@secure()
+param adminPassword string
+
+resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
+  name: sqlServerName
+  location: location
+  properties: {
+    administratorLogin: adminUser
+    administratorLoginPassword: adminPassword
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+  name: '${sqlServer.name}/sqldb-lab'
+  location: location
+  sku: {
+    name: 'GP_Gen5_2'
+    tier: 'GeneralPurpose'
+    capacity: 2
+  }
+}
+```
+
+```hcl
+resource "azurerm_mssql_server" "lab" {
+  name                         = var.sql_server_name
+  resource_group_name          = var.resource_group_name
+  location                     = var.location
+  version                      = "12.0"
+  administrator_login          = var.sql_admin_user
+  administrator_login_password = var.sql_admin_password
+  public_network_access_enabled = true
+}
+
+resource "azurerm_mssql_database" "lab" {
+  name      = "sqldb-lab"
+  server_id = azurerm_mssql_server.lab.id
+  sku_name  = "GP_Gen5_2"
+}
+```
+
+---
+
 ## Lab 1: Deploy Azure SQL Database (vCore General Purpose)
 
 ### Objective

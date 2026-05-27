@@ -7,6 +7,45 @@
 
 ---
 
+## Infrastructure as Code Starter Templates (Bicep & Terraform)
+
+Use these starter templates when a lab requires repeatable environment setup.
+
+```bicep
+param location string = resourceGroup().location
+param storageAccountName string
+
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: 'Standard_GRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+  }
+}
+```
+
+```hcl
+resource "azurerm_storage_account" "lab" {
+  name                     = var.storage_account_name
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"
+  account_kind             = "StorageV2"
+  access_tier              = "Hot"
+  min_tls_version          = "TLS1_2"
+  allow_nested_items_to_be_public = false
+}
+```
+
+---
+
 ## Lab 1: Storage Account with Lifecycle Management
 
 ### Objective
