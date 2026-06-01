@@ -237,51 +237,33 @@ Get-AzPublicIpAddress
 > ⚠️ **Important:** Service Endpoints and ExpressRoute solve **different problems**. ExpressRoute is for hybrid connectivity (on-prem to Azure). Service Endpoints enable firewall/access control over PaaS resources from specific subnets — they do NOT provide hybrid connectivity.
 
 ```text
-┌────────────────────────────────────────────────────────────┐
-│                  What kind of connectivity?               │
-└───────────────────────────────┬────────────────────────────┘
-                                │
-               ┌────────────────┼────────────────┐
-               │                │                │
-               ▼                ▼                ▼
-      Azure-to-Azure      Private access to   Azure-to-on-prem /
-      network design      Azure PaaS/service  branch / users
-               │                │                │
-               ▼                ▼                ▼
-   ┌────────────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
-   │ Need direct, low-  │  │ Must disable     │  │ Need hybrid connectivity│
-   │ latency private    │  │ public access or │  │ (on-prem to Azure)?     │
-   │ connectivity?      │  │ use a private IP?│  └──────────────┬──────────┘
-   └──────────┬─────────┘  └──────────┬───────┘                 │
-              │                       │                ┌────────┴────────┐
-     ┌────────┴────────┐      ┌───────┴────────┐       │ YES             │ NO
-     │ YES             │ NO   │ YES            │ NO    ▼                 ▼
-     ▼                 ▼      ▼                ▼  ┌─────────────────┐  (No hybrid
-┌──────────────┐  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ │ Need dedicated │   needed)
-│ VNet Peering │  │ Virtual  │ │ Private Link │ │ Service      │ │ private path   │
-│ (or Global   │  │ WAN / Hub│ │ / Private    │ │ Endpoint     │ │ w/ compliance? │
-│ Peering)     │  │ design   │ │ Endpoint     │ │ (subnet-level│ └────────┬──────┘
-└──────────────┘  └──────────┘ └──────────────┘ │ PaaS access) │          │
-                                                └──────────────┘ ┌────────┴────────┐
-                                                                 │ YES             │ NO
-                                                                 ▼                 ▼
-                                                         ┌──────────────┐  ┌──────────────┐
-                                                         │ ExpressRoute │  │ VPN Gateway  │
-                                                         └──────┬───────┘  │ (S2S/P2S)    │
-                                                                │          └──────────────┘
-                                                                ▼
-                                                   ┌────────────────────────┐
-                                                   │ Need many branches or  │
-                                                   │ managed global transit?│
-                                                   └───────────┬────────────┘
-                                                               │
-                                                     ┌─────────┴─────────┐
-                                                     │ YES               │ NO
-                                                     ▼                   ▼
-                                            ┌────────────────┐  ┌────────────────┐
-                                            │  Virtual WAN   │  │  VPN Gateway   │
-                                            │  (managed)     │  │ (self-managed) │
-                                            └────────────────┘  └────────────────┘
+What kind of connectivity?
+|
+|-- Azure-to-Azure network design
+|   |
+|   |-- Need direct, low-latency private connectivity?
+|       |-- YES -> VNet Peering (or Global Peering)
+|       `-- NO  -> Virtual WAN / Hub design
+|
+|-- Private access to Azure PaaS/service
+|   |
+|   |-- Must disable public access or use a private IP?
+|       |-- YES -> Private Link / Private Endpoint
+|       `-- NO  -> Service Endpoint (subnet-level PaaS access)
+|
+`-- Azure-to-on-prem / branch / users
+   |
+   |-- Need hybrid connectivity (on-prem to Azure)?
+      |-- NO  -> No hybrid path needed
+      `-- YES
+        |
+        |-- Need dedicated private path, high throughput, or compliance?
+        |   |-- YES -> ExpressRoute
+        |   `-- NO  -> VPN Gateway (S2S/P2S)
+        |
+        `-- Many branches or managed global transit required?
+           |-- YES -> Virtual WAN (managed)
+           `-- NO  -> Keep ExpressRoute or VPN based on the requirement above
 ```
 
 **Service Endpoints vs Private Endpoints — Key Distinction:**
