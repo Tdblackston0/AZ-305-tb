@@ -73,7 +73,7 @@
 | **Cross-service insights** | Combines Azure Backup, Azure Site Recovery, and native service protection data |
 | **Actionable recommendations** | Identifies gaps in protection coverage |
 
-> 💡 **AZ-305 Note:** Azure Business Continuity Center has been evolving and may be in preview or changing release state depending on timing. For exam prep, focus on Recovery Services Vault, Backup Vault, and Azure Site Recovery as the primary management controls, and verify current feature status in Microsoft Learn.
+> 💡 **AZ-305 Note (as of 2026):** Azure Business Continuity Center release status can change over time. For exam prep, focus on Recovery Services Vault, Backup Vault, and Azure Site Recovery as the primary management controls, and verify current feature status in Microsoft Learn.
 
 ---
 
