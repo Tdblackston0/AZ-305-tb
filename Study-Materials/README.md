@@ -63,6 +63,12 @@ This study guide is organized by **weakness priority** to help you make those 28
 - Hybrid connectivity
 - Virtual machine and scale set design
 
+### **[06-Practice-Exam.md](06-Practice-Exam.md)** - EXAM PREP 📝
+- 40 scenario-based AZ-305 style questions
+- Covers all major exam domains
+- Includes answer key and rationales
+- Best used under timed conditions
+
 ---
 
 ## 🎯 Study Strategy
@@ -87,6 +93,7 @@ This study guide is organized by **weakness priority** to help you make those 28
 
 ### Phase 4: Exam Prep (Day 8+)
 - Take official practice tests
+- Take the local [practice exam](06-Practice-Exam.md)
 - Review weak areas from practice tests
 - Do hands-on labs in Azure portal for all 4 domains
 

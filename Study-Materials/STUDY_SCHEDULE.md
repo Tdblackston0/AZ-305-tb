@@ -171,6 +171,7 @@ Answer 5 quick scenarios:
   - Architecture decisions (5 questions)
   - Data integration design (5 questions)
   - Bonus questions (5 questions)
+- [ ] Use [06-Practice-Exam.md](06-Practice-Exam.md) and complete questions 1-20 under timed conditions
 - [ ] **Time:** 1.5 hours
 - [ ] **Review Mistakes:** For any wrong answers, understand why
 
@@ -267,6 +268,7 @@ Strengthen secondary domains and prepare for full exam
   - Time limit: 120 minutes (same as real exam)
   - Full 40 questions (real exam has ~50)
   - Score goal: 700+
+- [ ] **Local Practice Test:** Complete [06-Practice-Exam.md](06-Practice-Exam.md) and review every rationale
 - [ ] **If passed:** Review weak areas, do targeted study
 - [ ] **If failed:** Focus on remaining mistakes, review those domains
 

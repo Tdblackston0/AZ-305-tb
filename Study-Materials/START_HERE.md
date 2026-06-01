@@ -44,7 +44,8 @@ Study-Materials/
 │
 └── EXAM PREP:
 ├── STUDY_SCHEDULE.md (your 2-week day-by-day plan)
-└── EXAM_TIPS.md (exam strategy + quick reference)
+├── EXAM_TIPS.md (exam strategy + quick reference)
+└── 06-Practice-Exam.md (40-question timed practice exam)
 ```
 
 ---
@@ -163,6 +164,7 @@ Study-Materials/
 
 ### For Exam Tips:
 - [EXAM_TIPS.md](EXAM_TIPS.md) - Strategy, quick reference, mental checklist
+- [06-Practice-Exam.md](06-Practice-Exam.md) - Full scenario-based practice exam
 
 ### For Overview:
 - [README.md](README.md) - Complete overview of all domains
