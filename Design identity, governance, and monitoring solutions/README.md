@@ -44,7 +44,7 @@
 |---------|----------|----------|--------------|-----|
 | **Microsoft Entra ID (formerly Azure AD)** | Identity platform | Workforce identity, SSO, app access, directory services | Users, groups, app registrations, enterprise apps, Conditional Access, MFA, PIM, hybrid identity | **99.99%** |
 | **Entra ID B2B** | External collaboration identity | Partner collaboration with guest/federated users | Guest access, federation, cross-tenant collaboration, lifecycle controls | Varies by SKU/plan |
-| **Entra External ID (includes legacy B2C exam wording)** | External customer identity platform | Customer-facing sign-up/sign-in, social identities, branded journeys | External tenants, customer identity flows, flexible external access patterns | Varies by SKU/plan |
+| **Entra External ID** | External customer identity platform | Customer-facing sign-up/sign-in, social identities, branded journeys | External tenants, customer identity flows, flexible external access patterns, legacy B2C exam wording awareness | Varies by SKU/plan |
 | **Managed Identities (system/user-assigned)** | Workload identity | Azure-hosted workloads that need Azure resource access without secrets | Automatic credential rotation, no secret storage, system-assigned and reusable user-assigned identities | Inherits host service SLA |
 | **Azure RBAC** | Authorization | Controlling **who** can perform actions on Azure resources | Role assignments, built-in/custom roles, scope inheritance, least privilege, deny assignments in limited scenarios | Inherits Azure Resource Manager |
 | **Azure Policy** | Governance/compliance | Controlling **what** can be deployed or required | Deny, Audit, Modify, DeployIfNotExists, initiatives, exemptions, remediation tasks, compliance view | Inherits Azure Resource Manager |
@@ -169,7 +169,7 @@ Use when the requirement includes:
 |-------|------|------------|
 | **B2B** | Partners, suppliers, vendors, guests, collaboration | You need consumer-scale sign-up/sign-in journeys |
 | **External ID (customer, often tested as B2C wording)** | Customer-facing apps, social identities, branded sign-up | You only need partner collaboration |
-| **Entra External ID** | Broader external identity modernization scenarios | The exam specifically anchors on classic B2B/B2C wording |
+| **Entra External ID** | Broader external identity modernization scenarios (often tested with legacy B2C wording) | You need workforce/partner collaboration only (B2B is better fit) |
 
 **One-line memory aid:**
 - **B2B = business partners**
