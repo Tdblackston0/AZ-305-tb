@@ -23,7 +23,7 @@
 - Design a solution for logging and monitoring
 - Design authentication and authorization solutions
 - Design governance
-- Design identities solutions
+- Design identity solutions
 
 > **Exam tip:** if the question says **secure, scalable, low-admin, least privilege**, Microsoft usually wants **Managed Identity + RBAC + Policy + monitoring by default**.
 
