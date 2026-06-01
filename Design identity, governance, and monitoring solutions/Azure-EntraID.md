@@ -16,21 +16,22 @@
 - [5. Identity Protection](#5-identity-protection)
 - [6. Privileged Identity Management (PIM)](#6-privileged-identity-management-pim)
 - [7. Managed Identities](#7-managed-identities)
-- [8. Service Principals & App Registrations](#8-service-principals-app-registrations)
-- [9. Hybrid Identity](#9-hybrid-identity)
-- [10. B2B Collaboration](#10-b2b-collaboration)
-- [11. B2C (External Identities)](#11-b2c-external-identities)
-- [12. Entra External ID](#12-entra-external-id)
-- [13. Security Best Practices](#13-security-best-practices)
-- [14. Availability & Resilience](#14-availability-resilience)
-- [15. Cost Optimization](#15-cost-optimization)
-- [16. AZ-305 Decision Scenarios](#16-az-305-decision-scenarios)
-- [17. Quick Reference Trigger Table](#17-quick-reference-trigger-table)
-- [18. Common Exam Traps](#18-common-exam-traps)
-- [19. Command Snippets to Remember](#19-command-snippets-to-remember)
-- [20. 🎯 Final AZ-305 Exam Tips](#20-final-az-305-exam-tips)
-- [21. 📐 Architecture Decision Flowchart](#21-architecture-decision-flowchart)
-- [22. Exam-Style Review Questions](#22-exam-style-review-questions)
+- [8. Azure Key Vault](#8-azure-key-vault)
+- [9. Service Principals & App Registrations](#9-service-principals-app-registrations)
+- [10. Hybrid Identity](#10-hybrid-identity)
+- [11. B2B Collaboration](#11-b2b-collaboration)
+- [12. B2C (External Identities)](#12-b2c-external-identities)
+- [13. Entra External ID](#13-entra-external-id)
+- [14. Security Best Practices](#14-security-best-practices)
+- [15. Availability & Resilience](#15-availability-resilience)
+- [16. Cost Optimization](#16-cost-optimization)
+- [17. AZ-305 Decision Scenarios](#17-az-305-decision-scenarios)
+- [18. Quick Reference Trigger Table](#18-quick-reference-trigger-table)
+- [19. Common Exam Traps](#19-common-exam-traps)
+- [20. Command Snippets to Remember](#20-command-snippets-to-remember)
+- [21. 🎯 Final AZ-305 Exam Tips](#21-final-az-305-exam-tips)
+- [22. 📐 Architecture Decision Flowchart](#22-architecture-decision-flowchart)
+- [23. Exam-Style Review Questions](#23-exam-style-review-questions)
 
 ---
 
@@ -653,8 +654,264 @@ Modern pattern: **workload identity federation**.
 
 ---
 
-<a id="8-service-principals-app-registrations"></a>
-## 8. Service Principals & App Registrations
+<a id="8-azure-key-vault"></a>
+## 8. Azure Key Vault
+
+### Overview
+
+**Azure Key Vault** is a managed secrets and encryption key management service. It's the identity layer for managing credentials, encryption keys, and certificates—tightly integrated with managed identities and Entra ID access control.
+
+### Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| **Secrets** | Passwords, connection strings, API keys (managed access via RBAC) |
+| **Keys** | Encryption keys for customer-managed key (CMK) scenarios |
+| **Certificates** | SSL/TLS certificates and CA chains |
+| **Managed Storage** | Rotate storage account keys automatically (legacy feature, less common) |
+
+### Key Vault Tiers
+
+| Tier | Cost | Features | Best For |
+|------|------|----------|----------|
+| **Standard** | ~$0.03/operation | RBAC, soft delete, purge protection | Most workloads |
+| **Premium** | ~$1.00/hour | Dedicated HSM (Hardware Security Module) | FIPS 140-2 Level 3 compliance, key custody |
+
+> **HSM:** Physical hardware-backed key storage for ultimate security/compliance.
+
+### Access Control Models
+
+#### RBAC (Recommended for modern workloads)
+
+```
+Entra ID → RBAC Role Assignment → Key Vault Secret/Key
+├─ Key Vault Secrets Officer (create, delete, rotate)
+├─ Key Vault Secrets User (read secrets)
+├─ Key Vault Crypto Officer (manage keys)
+├─ Key Vault Crypto Service Encryption User (key operations for service encryption)
+└─ Key Vault Certificates Officer (manage certificates)
+```
+
+**Advantage:** Granular, auditable, integrates with managed identities naturally.
+
+#### Access Policies (Legacy, being phased out)
+
+```
+Key Vault Access Policy:
+├─ Secret permissions: get, list, set, delete
+├─ Key permissions: decrypt, encrypt, sign, verify
+├─ Certificate permissions: get, list, create, delete
+└─ Assigned to service principal or user
+```
+
+**Disadvantage:** Less granular, separate audit trail, not recommended for new designs.
+
+> **Best Practice:** Use **RBAC only** for new Key Vaults. Access policies are deprecated.
+
+### Integration with Azure Services
+
+#### With Managed Identities (Secretless Pattern)
+
+```
+1. Create user-assigned or system-assigned MI
+2. Grant MI "Key Vault Secrets User" RBAC role
+3. Application uses DefaultAzureCredential to authenticate
+4. Application calls Key Vault API (no credentials in code)
+
+Example:
+  Azure App Service (Managed Identity)
+       ↓
+       └─→ Get secret from Key Vault
+           (authenticated via MI, authorized via RBAC)
+```
+
+#### With Managed Keys for Storage/SQL
+
+```
+Storage Account or SQL Database
+    ↓
+  "Use customer-managed key (CMK)"
+    ↓
+  Key Vault (CMK stored here)
+    ↓
+  Service Identity needs "Key Vault Crypto Service Encryption User" role
+```
+
+#### With Service Principals
+
+```
+Service Principal (app registration)
+    ↓
+"Client Secret" stored in Key Vault
+    ↓
+Application retrieves secret at runtime
+    ↓
+Authenticates using the secret
+```
+
+### Key Rotation and Versioning
+
+**Automatic Rotation (if configured):**
+- Define rotation policy (e.g., rotate every 30 days)
+- Key Vault auto-renews keys on schedule
+- Applications automatically use latest version
+
+**Manual Rotation:**
+- Create new version of secret/key
+- Applications poll for latest version
+- Old versions retained for compliance/audit
+
+**Versioning Example:**
+```
+Secret "db-password"
+├─ Version 1: abc123... (created 2025-01-01)
+├─ Version 2: def456... (created 2025-02-01)
+└─ Version 3: ghi789... (created 2025-03-01, CURRENT)
+
+Application can reference:
+- By name only (gets current)
+- By name + specific version (for rollback scenarios)
+```
+
+### Network Security
+
+#### Private Endpoints (Recommended)
+
+```
+Application (VNet)
+    ↓
+  Private Endpoint (10.0.1.5)
+    ↓
+  Key Vault (private access only)
+```
+
+- Disable public access
+- Private DNS zone: `privatelink.vaultcore.azure.net`
+- Traffic stays on Azure backbone
+
+#### Firewall Rules
+
+```
+Key Vault Firewall:
+├─ Default: DENY (unless in allowlist)
+├─ Trusted Microsoft services: ALLOW (Storage, SQL, etc.)
+└─ Specific IP/VNet ranges: ALLOW
+```
+
+### RBAC Role Decision Tree
+
+| Requirement | Role |
+|-------------|------|
+| Read secrets only | Key Vault Secrets User |
+| Manage secrets (CRUD) | Key Vault Secrets Officer |
+| Decrypt/encrypt with keys | Key Vault Crypto User |
+| Manage encryption keys | Key Vault Crypto Officer |
+| Service encryption (CMK) | Key Vault Crypto Service Encryption User |
+| Manage certificates | Key Vault Certificates Officer |
+| Full admin (risky) | Key Vault Administrator |
+
+### Audit & Compliance
+
+**Logging:**
+- All access logged to Azure Monitor
+- Key access (get, create, delete) tracked with who/when
+- Integration with Microsoft Sentinel for SIEM
+
+**Soft Delete & Purge Protection:**
+```
+Key Vault deleted
+    ↓
+  Soft Delete (90-day retention)
+    ↓
+  Can be recovered (if purge protection OFF)
+    ↓
+  Or auto-purged after 90 days
+```
+
+> **Best Practice:** Enable purge protection on Key Vaults with critical keys (cannot be purged even by admins, requires policy change).
+
+### Common Patterns
+
+#### Pattern 1: Application Secret Injection
+
+```csharp
+var client = new SecretClient(
+    vaultUri: new Uri("https://kv-contoso.vault.azure.net/"),
+    credential: new DefaultAzureCredential()  // ← Managed Identity
+);
+
+// App retrieves secret at runtime
+KeyVaultSecret secret = client.GetSecret("db-connection-string");
+string connectionString = secret.Value;
+```
+
+#### Pattern 2: Encryption Key for Storage
+
+```bash
+# Create CMK in Key Vault
+az keyvault key create -n key-storage \
+  --vault-name kv-contoso \
+  --ops encrypt decrypt
+
+# Assign MI to Storage Account
+az storage account identity assign \
+  -g rg-storage \
+  --name stor.contoso
+
+# Grant MI Crypto Service Encryption User role
+az role assignment create \
+  --assignee <storage-identity-object-id> \
+  --role "Key Vault Crypto Service Encryption User" \
+  --scope /subscriptions/<subId>/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-contoso
+
+# Enable CMK on Storage
+az storage account encryption-scope create \
+  --account-name stor.contoso \
+  --name enc-cmk \
+  --key-source Microsoft.KeyVault \
+  --key-vault-uri https://kv-contoso.vault.azure.net/ \
+  --key-name key-storage
+```
+
+#### Pattern 3: Certificate Management (TLS/SSL)
+
+```
+Application Gateway / App Service
+    ↓
+  "Use certificate from Key Vault"
+    ↓
+  Certificate auto-renews in Key Vault
+    ↓
+  Service identity reads updated cert
+    ↓
+  No manual cert management needed
+```
+
+### Architect Checklist
+
+- ✅ **Use RBAC, not access policies** (modern, auditable)
+- ✅ **Enable private endpoints** (network isolation)
+- ✅ **Use managed identities** (no hardcoded secrets)
+- ✅ **Enable purge protection** (prevent accidental deletion of critical keys)
+- ✅ **Enable soft delete** (default in Standard tier)
+- ✅ **Rotate secrets regularly** (policy-driven auto-rotation if possible)
+- ✅ **Audit all access** (Monitor logs, alerting on suspicious access)
+- ✅ **Principle of least privilege** (only assign minimal roles needed)
+- ✅ **Use Premium tier with HSM** (if compliance/FIPS 140-2 required)
+
+### Exam Points
+
+- Key Vault = **identity layer for secrets/keys/certs** (not a storage service)
+- Default to **RBAC over access policies**
+- **Managed Identity + Key Vault** = secretless pattern (preferred)
+- **CMK + Key Vault** = customer-controlled encryption (compliance scenarios)
+- Private endpoints + firewall = **network-isolated Key Vault**
+- **Soft delete + purge protection** = recoverability + accidental deletion prevention
+
+---
+
+<a id="9-service-principals-app-registrations"></a>
+## 9. Service Principals & App Registrations
 
 ### App registration vs enterprise application
 
@@ -723,8 +980,8 @@ New-AzureADServicePrincipal -AppId <appId>
 
 ---
 
-<a id="9-hybrid-identity"></a>
-## 9. Hybrid Identity
+<a id="10-hybrid-identity"></a>
+## 10. Hybrid Identity
 
 ### Microsoft Entra Connect vs Entra Cloud Sync
 > **Note:** Formerly known as Azure AD Connect and Azure AD Connect Cloud Sync. Microsoft documentation may still use older terminology.
@@ -787,8 +1044,8 @@ az ad device list --top 10
 
 ---
 
-<a id="10-b2b-collaboration"></a>
-## 10. B2B Collaboration
+<a id="11-b2b-collaboration"></a>
+## 11. B2B Collaboration
 
 ### What it is
 B2B collaboration lets external users access your workforce tenant resources as **guest users**.
@@ -864,8 +1121,8 @@ Connect-MgGraph -Scopes "Policy.ReadWrite.CrossTenantAccess"
 
 ---
 
-<a id="11-b2c-external-identities"></a>
-## 11. B2C (External Identities)
+<a id="12-b2c-external-identities"></a>
+## 12. B2C (External Identities)
 
 ### When to use B2C vs B2B
 
@@ -901,8 +1158,8 @@ Connect-MgGraph -Scopes "Policy.ReadWrite.CrossTenantAccess"
 
 ---
 
-<a id="12-entra-external-id"></a>
-## 12. Entra External ID
+<a id="13-entra-external-id"></a>
+## 13. Entra External ID
 
 ### What it is
 Microsoft Entra External ID is the broader external identity platform for managing external users and customer/workforce external access scenarios.
@@ -926,8 +1183,8 @@ Microsoft Entra External ID is the broader external identity platform for managi
 
 ---
 
-<a id="13-security-best-practices"></a>
-## 13. Security Best Practices
+<a id="14-security-best-practices"></a>
+## 14. Security Best Practices
 
 ### Zero Trust principles applied to identity
 - Verify explicitly.
@@ -973,8 +1230,8 @@ az rest --method GET \
 
 ---
 
-<a id="14-availability-resilience"></a>
-## 14. Availability & Resilience
+<a id="15-availability-resilience"></a>
+## 15. Availability & Resilience
 
 Identity is a **control-plane dependency**. If users cannot sign in, admins cannot elevate, workloads cannot obtain tokens, and applications fail even when compute is healthy. For AZ-305, design identity with the same resilience mindset you would apply to network or database architecture.
 
@@ -1011,8 +1268,8 @@ Identity is a **control-plane dependency**. If users cannot sign in, admins cann
 
 ---
 
-<a id="15-cost-optimization"></a>
-## 15. Cost Optimization
+<a id="16-cost-optimization"></a>
+## 16. Cost Optimization
 
 AZ-305 identity questions are usually about **licensing the minimum tier that still satisfies security and governance requirements**. The exam expects you to avoid both under-licensing and over-engineering.
 
@@ -1052,8 +1309,8 @@ AZ-305 identity questions are usually about **licensing the minimum tier that st
 
 ---
 
-<a id="16-az-305-decision-scenarios"></a>
-## 16. AZ-305 Decision Scenarios
+<a id="17-az-305-decision-scenarios"></a>
+## 17. AZ-305 Decision Scenarios
 
 ### 1. Multi-tenant SaaS identity design
 **Scenario:** You are designing a SaaS application used by customers from many organizations. Each organization wants its own tenant to authenticate its users.
@@ -1141,8 +1398,8 @@ AZ-305 identity questions are usually about **licensing the minimum tier that st
 
 ---
 
-<a id="17-quick-reference-trigger-table"></a>
-## 17. Quick Reference Trigger Table
+<a id="18-quick-reference-trigger-table"></a>
+## 18. Quick Reference Trigger Table
 
 | If the scenario says... | Think... |
 |---|---|
@@ -1185,8 +1442,8 @@ AZ-305 identity questions are usually about **licensing the minimum tier that st
 
 ---
 
-<a id="18-common-exam-traps"></a>
-## 18. Common Exam Traps
+<a id="19-common-exam-traps"></a>
+## 19. Common Exam Traps
 
 ### 1. B2B vs B2C confusion
 - **B2B** = partners, vendors, guest users accessing your workforce resources.
@@ -1226,8 +1483,8 @@ AZ-305 identity questions are usually about **licensing the minimum tier that st
 
 ---
 
-<a id="19-command-snippets-to-remember"></a>
-## 19. Command Snippets to Remember
+<a id="20-command-snippets-to-remember"></a>
+## 20. Command Snippets to Remember
 
 ```bash
 # Users, groups, apps
@@ -1264,7 +1521,7 @@ az rest --method GET --url "https://graph.microsoft.com/v1.0/auditLogs/signIns?$
 ---
 
 <a id="20-final-az-305-exam-tips"></a>
-## 20. 🎯 Final AZ-305 Exam Tips
+## 21. 🎯 Final AZ-305 Exam Tips
 
 1. If the scenario says **partner**, start with **B2B** before considering customer identity options.
 2. If it says **customer portal** or **public sign-up**, start with **B2C/External ID**, not workforce collaboration.
@@ -1297,7 +1554,7 @@ az rest --method GET --url "https://graph.microsoft.com/v1.0/auditLogs/signIns?$
 ---
 
 <a id="21-architecture-decision-flowchart"></a>
-## 21. 📐 Architecture Decision Flowchart
+## 22. 📐 Architecture Decision Flowchart
 
 ```
 Start
@@ -1330,7 +1587,7 @@ Start
 ---
 
 <a id="22-exam-style-review-questions"></a>
-## 22. Exam-Style Review Questions
+## 23. Exam-Style Review Questions
 
 1. A company wants external suppliers to use their own corporate credentials to access a procurement app in your tenant. Which identity model should you recommend, and why is B2C the wrong answer?
 2. Your security team wants all privileged admins to have no standing access, require approval, and activate roles only when needed. Which Entra feature and license tier are required?
