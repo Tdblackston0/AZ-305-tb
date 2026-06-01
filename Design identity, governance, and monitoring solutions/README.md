@@ -25,6 +25,15 @@
 - Design governance
 - Design identity solutions
 
+### Expanded study focus in this cheat sheet
+
+- Design for Microsoft Entra ID, external identities, and hybrid identity
+- Design role assignment and least-privilege access models
+- Design governance using management groups, subscriptions, policy, and tagging
+- Design monitoring strategies with Azure Monitor, Log Analytics, alerts, and workbooks
+- Design security monitoring using Defender for Cloud and Microsoft Sentinel
+- Recommend workspace, retention, archival, and incident response patterns
+
 > **Exam tip:** if the question says **secure, scalable, low-admin, least privilege**, Microsoft usually wants **Managed Identity + RBAC + Policy + monitoring by default**.
 
 ---

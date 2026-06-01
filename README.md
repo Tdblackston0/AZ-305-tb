@@ -11,6 +11,8 @@ This repository contains AZ-305 study notes and hands-on lab content organized b
 | Design data storage solutions | 25-30% | [Design Data Storage Solutions](./Design%20Data%20Storage%20Solutions/) |
 | Design business continuity solutions | 10-15% | [Design business continuity solutions](./Design%20business%20continuity%20solutions/) |
 
+> Weights are aligned to the current Microsoft Learn AZ-305 study guide.
+
 ## Repository Structure
 
 - Domain-level `README.md` files contain overviews, decision guidance, and study references.

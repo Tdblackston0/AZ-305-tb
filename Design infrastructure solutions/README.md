@@ -20,6 +20,15 @@
   - Design migrations
   - Design a network solution
 
+- **Expanded study focus in this cheat sheet:**
+  - Select the right compute service for workload requirements
+  - Design for scale, elasticity, and fault tolerance
+  - Choose between VM, container, PaaS, and serverless options
+  - Design virtual networks, segmentation, and secure connectivity
+  - Choose the correct load balancing service at regional or global scope
+  - Design hybrid connectivity with VPN Gateway, ExpressRoute, Virtual WAN, and Azure Arc
+  - Recommend platform services based on cost, operations, security, and performance tradeoffs
+
 ### What the exam is really asking
 
 Microsoft rarely asks for definitions only. It usually gives a scenario and expects you to choose the **best-fit service** based on:
