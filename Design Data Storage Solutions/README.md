@@ -1,16 +1,15 @@
 # 🗄️ AZ-305: Design Data Storage Solutions
 
-> **Exam Domain Weight: 20–25%** of the AZ-305 exam focuses on designing data storage solutions.
+> **Exam Domain Weight: 25–30%** of the AZ-305 exam focuses on designing data storage solutions.
 
 ## Overview
 
 This domain tests your ability to recommend storage solutions based on requirements for **performance, cost, scalability, availability, durability, and compliance**. You must understand when to choose relational vs. NoSQL, structured vs. unstructured, and how to integrate storage with compute and analytics services.
 
-**Key skills measured:**
-- Design a data storage solution for relational and non-relational data
-- Design a data integration strategy
-- Recommend a database solution (SQL, Cosmos DB, or other)
-- Recommend a storage account type and access tier
+**Official skills measured (Study guide):**
+- Design a data storage solution for relational data
+- Design a data storage solution for non-relational data
+- Design data integration
 
 ---
 

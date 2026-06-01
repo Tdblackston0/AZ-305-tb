@@ -20,7 +20,13 @@
 
 ### Key skills measured
 
+- Design a solution for logging and monitoring
 - Design authentication and authorization solutions
+- Design governance
+- Design identity solutions
+
+### Expanded study focus in this cheat sheet
+
 - Design for Microsoft Entra ID, external identities, and hybrid identity
 - Design role assignment and least-privilege access models
 - Design governance using management groups, subscriptions, policy, and tagging
@@ -36,9 +42,9 @@
 
 | Service | Category | Best For | Key Features | SLA |
 |---------|----------|----------|--------------|-----|
-| **Microsoft Entra ID (Azure AD)** | Identity platform | Workforce identity, SSO, app access, directory services | Users, groups, app registrations, enterprise apps, Conditional Access, MFA, PIM, hybrid identity | **99.99%** |
-| **Entra ID B2B / B2C** | External identity | Partner collaboration (B2B) and customer-facing identity (B2C) | Guest access, federation, social identity, custom sign-up/sign-in journeys, tenant isolation patterns | Varies by SKU/plan |
-| **Entra External ID** | External identity platform | Modern external workforce/customer identity scenarios | External tenants, partner/customer identity, flexible external access patterns, branded journeys | Varies by SKU/plan |
+| **Microsoft Entra ID (formerly Azure AD)** | Identity platform | Workforce identity, SSO, app access, directory services | Users, groups, app registrations, enterprise apps, Conditional Access, MFA, PIM, hybrid identity | **99.99%** |
+| **Entra ID B2B** | External collaboration identity | Partner collaboration with guest/federated users | Guest access, federation, cross-tenant collaboration, lifecycle controls | Varies by SKU/plan |
+| **Entra External ID** | External customer identity platform | Customer-facing sign-up/sign-in, social identities, branded journeys | External tenants, customer identity flows, flexible external access patterns, legacy B2C exam wording awareness | Varies by SKU/plan |
 | **Managed Identities (system/user-assigned)** | Workload identity | Azure-hosted workloads that need Azure resource access without secrets | Automatic credential rotation, no secret storage, system-assigned and reusable user-assigned identities | Inherits host service SLA |
 | **Azure RBAC** | Authorization | Controlling **who** can perform actions on Azure resources | Role assignments, built-in/custom roles, scope inheritance, least privilege, deny assignments in limited scenarios | Inherits Azure Resource Manager |
 | **Azure Policy** | Governance/compliance | Controlling **what** can be deployed or required | Deny, Audit, Modify, DeployIfNotExists, initiatives, exemptions, remediation tasks, compliance view | Inherits Azure Resource Manager |
@@ -63,7 +69,7 @@
 |----------------|-------------------|
 | Employee identity + SSO | Microsoft Entra ID |
 | Partner access with their own credentials | Entra ID B2B |
-| Customer sign-up/sign-in | Entra ID B2C / Entra External ID |
+| Customer sign-up/sign-in | Entra External ID (legacy exam wording: B2C) |
 | Secretless Azure workload auth | Managed Identity |
 | Least-privilege admin access | RBAC + PIM |
 | Enforce standards across subscriptions | Management Groups + Azure Policy |
@@ -97,7 +103,7 @@
 | Pattern | Use When | Notes |
 |--------|----------|-------|
 | Cloud-only SSO | SaaS/modern apps | Simplest pattern |
-| Hybrid SSO | On-prem AD + Microsoft 365/Azure apps | Use Azure AD Connect or Cloud Sync based on scenario |
+| Hybrid SSO | On-prem AD + Microsoft 365/Azure apps | Use Microsoft Entra Connect Sync or Cloud Sync based on scenario |
 | Federation | External IdP or special auth requirements | Higher complexity; use when required |
 | App proxy / pre-auth | Publishing on-prem apps securely | Good for remote access without full VPN |
 
@@ -149,7 +155,7 @@ Use when the requirement includes:
 
 | Option | Best For | Notes |
 |-------|----------|-------|
-| Azure AD Connect | Richer hybrid needs, traditional sync, complex coexistence | Most common exam answer for classic hybrid identity |
+| Microsoft Entra Connect Sync | Richer hybrid needs, traditional sync, complex coexistence | Most common exam answer for classic hybrid identity |
 | Cloud Sync | Lighter-weight sync, simpler deployments, cloud-managed agent model | Great when the question emphasizes simplicity |
 | Federation | Only when specific auth/control needs justify complexity | Avoid unless required |
 
@@ -157,17 +163,17 @@ Use when the requirement includes:
 - If the scenario says **existing on-prem AD users must use same identities in Azure**, think **hybrid identity sync**.
 - If it says **minimal infrastructure**, lean toward **Cloud Sync**.
 
-#### B2B vs B2C decision criteria
+#### B2B vs External ID (B2C wording) decision criteria
 
 | Choose | When | Avoid When |
 |-------|------|------------|
 | **B2B** | Partners, suppliers, vendors, guests, collaboration | You need consumer-scale sign-up/sign-in journeys |
-| **B2C** | Customer-facing apps, social identities, branded sign-up | You only need partner collaboration |
-| **Entra External ID** | Broader external identity modernization scenarios | The exam specifically anchors on classic B2B/B2C wording |
+| **External ID (customer, often tested as B2C wording)** | Customer-facing apps, social identities, branded sign-up | You only need partner collaboration |
+| **Entra External ID** | Broader external identity modernization scenarios (often tested with legacy B2C wording) | You need workforce/partner collaboration only (B2B is better fit) |
 
 **One-line memory aid:**
 - **B2B = business partners**
-- **B2C = customers**
+- **External ID (often called B2C in older exam wording) = customers**
 
 ---
 
@@ -386,7 +392,7 @@ Start
  ├─ Are the users employees/internal workforce?
  │   ├─ Yes → Microsoft Entra ID
  │   │   └─ Need hybrid with on-prem AD?
- │   │       ├─ Yes → Azure AD Connect or Cloud Sync
+ │   │       ├─ Yes → Entra Connect Sync or Cloud Sync
  │   │       └─ No  → Cloud-only Entra ID
  │   └─ No
  │
@@ -395,7 +401,7 @@ Start
  │   └─ No
  │
  ├─ Are they end customers signing up to an app?
- │   ├─ Yes → Entra ID B2C / Entra External ID
+ │   ├─ Yes → Entra External ID (legacy exam wording: B2C)
  │   └─ No
  │
  └─ Need workload-to-Azure authentication?
@@ -467,7 +473,7 @@ Need log/workspace design
 
 | Topic | File | Covers |
 |-------|------|--------|
-| Microsoft Entra ID | [Azure-EntraID.md](./Azure-EntraID.md) | Authentication, authorization, B2B/B2C, hybrid, PIM |
+| Microsoft Entra ID | [Azure-EntraID.md](./Azure-EntraID.md) | Authentication, authorization, B2B/External ID (B2C wording), hybrid, PIM |
 | Governance | [Azure-Governance.md](./Azure-Governance.md) | RBAC, Policy, Blueprints, Management Groups, compliance |
 | Monitoring & Observability | [Azure-Monitoring.md](./Azure-Monitoring.md) | Monitor, Log Analytics, Alerts, App Insights, Sentinel |
 
@@ -494,7 +500,7 @@ Need log/workspace design
 | "Need both" | RBAC + Policy |
 | "Owners must still be blocked" | Policy or lock/deny assignment pattern |
 | "Partners" | B2B |
-| "Customers" | B2C / External ID |
+| "Customers" | External ID (legacy exam wording: B2C) |
 | "Admins should not be permanent" | PIM Eligible |
 | "No secret rotation burden" | Managed Identity |
 | "Fast alerting" | Metrics |
@@ -521,7 +527,7 @@ Need log/workspace design
 | **Just-in-time admin** | PIM |
 | **Phishing-resistant** | FIDO2 / WHfB |
 | **Partners** | B2B |
-| **Customers** | B2C |
+| **Customers** | External ID (legacy exam wording: B2C) |
 | **Fast alert** | Metric |
 | **Deep query** | Log Analytics |
 | **Threat + incident** | Sentinel |
@@ -532,7 +538,7 @@ Need log/workspace design
 |---------------|-------|
 | "phishing-resistant" | FIDO2 / Windows Hello for Business |
 | "partner collaboration" | Entra ID B2B |
-| "consumer sign-up" | Entra ID B2C / External ID |
+| "consumer sign-up" | Entra External ID (legacy exam wording: B2C) |
 | "no secrets" | Managed Identity |
 | "govern all subscriptions" | Management Groups + Policy |
 | "auto-remediate" | DeployIfNotExists / Modify |
@@ -549,7 +555,7 @@ Need log/workspace design
 |------------------------|----------|-----|
 | Employees need SSO to Microsoft 365 and SaaS apps | Microsoft Entra ID | Core workforce identity platform |
 | Partners need access using their own company credentials | Entra ID B2B | Guest/federated partner collaboration |
-| Customers must sign in with Google/Facebook accounts | Entra ID B2C / Entra External ID | Consumer identity and social sign-in |
+| Customers must sign in with Google/Facebook accounts | Entra External ID (legacy exam wording: B2C) | Consumer identity and social sign-in |
 | Admin sign-in must be phishing-resistant | FIDO2 or Windows Hello for Business | Strongest exam-favorite answer |
 | Require stronger access controls based on user risk or sign-in risk | Identity Protection + Conditional Access | Risk-based access needs P2 features |
 | Admins should only elevate when needed | PIM Eligible assignment | Just-in-time privilege |
@@ -590,7 +596,7 @@ Need log/workspace design
 ## Final Cram List
 
 - **RBAC = who. Policy = what. Conditional Access = sign-in conditions. PIM = just-in-time privilege.**
-- **B2B = partners. B2C/External ID = customers. Managed Identity = Azure workloads with no secrets.**
+- **B2B = partners. External ID (often tested as B2C wording) = customers. Managed Identity = Azure workloads with no secrets.**
 - **Management Groups are the scale unit for governance inheritance across subscriptions.**
 - **Metrics are for fast alerts; logs are for investigation, retention, correlation, and security analytics.**
 - **Defender for Cloud improves posture; Sentinel correlates threats and drives SOC response.**

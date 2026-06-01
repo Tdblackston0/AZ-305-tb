@@ -15,6 +15,12 @@
   - Hybrid and multi-cloud integration patterns
   - High availability, resiliency, and scale decisions
 - **Key skills measured:**
+  - Design a compute solution
+  - Design an application architecture
+  - Design migrations
+  - Design a network solution
+
+- **Expanded study focus in this cheat sheet:**
   - Select the right compute service for workload requirements
   - Design for scale, elasticity, and fault tolerance
   - Choose between VM, container, PaaS, and serverless options
