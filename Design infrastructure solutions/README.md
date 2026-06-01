@@ -15,13 +15,10 @@
   - Hybrid and multi-cloud integration patterns
   - High availability, resiliency, and scale decisions
 - **Key skills measured:**
-  - Select the right compute service for workload requirements
-  - Design for scale, elasticity, and fault tolerance
-  - Choose between VM, container, PaaS, and serverless options
-  - Design virtual networks, segmentation, and secure connectivity
-  - Choose the correct load balancing service at regional or global scope
-  - Design hybrid connectivity with VPN Gateway, ExpressRoute, Virtual WAN, and Azure Arc
-  - Recommend platform services based on cost, operations, security, and performance tradeoffs
+  - Design a compute solution
+  - Design an application architecture
+  - Design migrations
+  - Design a network solution
 
 ### What the exam is really asking
 

@@ -6,18 +6,14 @@
 
 ## 1. AZ-305 Exam Domain Overview
 
-- **Exam weight:** **15-20%**
+- **Exam weight:** **10-15%**
 - **What Microsoft tests:** backup strategy, disaster recovery design, high availability architecture, and how well you align technical choices to **RTO** and **RPO** targets.
 - **What the exam rewards:** choosing the **lowest-ops**, **most resilient**, **cost-aware**, and **business-aligned** continuity design rather than the most complex architecture.
 
 ### Key skills measured
 
-- Design backup and restore strategies for Azure and hybrid workloads
-- Design disaster recovery solutions across zones, regions, and platforms
-- Design high availability for compute, networking, storage, and data tiers
-- Match business requirements to **RTO**, **RPO**, **SLA**, and failover patterns
-- Recommend replication, failover, and recovery testing strategies
-- Choose between active-active, active-passive, warm standby, pilot light, and hot standby designs
+- Design a solution for backup and disaster recovery
+- Design a solution for high availability
 
 ### What Microsoft is really asking
 
