@@ -425,10 +425,10 @@ Lifecycle Management:
 
 ## Key Microsoft Learn Resources
 
-1. **[Design data integration](https://learn.microsoft.com/training/modules/design-data-integration/)** - 50 min
-2. **[Azure Data Factory fundamentals](https://learn.microsoft.com/training/modules/data-factory-fundamentals/)** - 45 min
-3. **[Azure Synapse SQL pool](https://learn.microsoft.com/training/modules/create-data-warehouse-azure-synapse-analytics/)** - 50 min
-4. **[Stream Processing with Spark](https://learn.microsoft.com/training/modules/stream-processing-spark/)** - 60 min
+1. **[Design data integration](https://learn.microsoft.com/en-us/training/modules/design-data-integration/)** - 50 min
+2. **[Data integration at scale with Azure Data Factory](https://learn.microsoft.com/en-us/training/paths/data-integration-scale-azure-data-factory/)** - 2 hours
+3. **[Pipelines and activities in Azure Data Factory](https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities)** - 50 min
+4. **[Azure Data Factory tutorials](https://learn.microsoft.com/en-us/azure/data-factory/data-factory-tutorials)** - 1.5 hours
 
 **Total Study Time:** 3-4 hours  
 **Hands-On Labs:** 2-3 hours

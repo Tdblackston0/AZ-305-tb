@@ -405,10 +405,10 @@ Your application needs to read secrets from Key Vault without storing credential
 
 ## Key Microsoft Learn Resources
 
-1. **[Manage Entra ID](https://learn.microsoft.com/training/modules/manage-entra-id/)** - 45 min
-2. **[Conditional Access policies](https://learn.microsoft.com/training/modules/conditional-access-azure-ad/)** - 40 min
-3. **[Monitor Azure resources](https://learn.microsoft.com/training/modules/monitor-azure-resources/)** - 50 min
-4. **[Application Insights](https://learn.microsoft.com/training/modules/monitor-web-app-performance/)** - 45 min
+1. **[Training for Microsoft Entra ID](https://learn.microsoft.com/en-us/training/entra/)** - 45 min
+2. **[Plan, implement, and administer Conditional Access](https://learn.microsoft.com/en-us/training/modules/plan-implement-administer-conditional-access/)** - 60 min
+3. **[AZ-104: Monitor and back up Azure resources](https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/)** - 50 min
+4. **[Application Insights for application performance monitoring](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview)** - 45 min
 
 ---
 

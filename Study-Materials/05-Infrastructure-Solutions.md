@@ -469,10 +469,10 @@ Design network for: public web servers, internal APIs, sensitive databases
 
 ## Key Microsoft Learn Resources
 
-1. **[Design compute solutions](https://learn.microsoft.com/training/modules/compute-solutions/)** - 45 min
-2. **[Design network solutions](https://learn.microsoft.com/training/modules/design-network-solutions/)** - 50 min
-3. **[Design resilient solutions](https://learn.microsoft.com/training/modules/design-resilient-applications/)** - 45 min
-4. **[Hybrid connectivity](https://learn.microsoft.com/training/modules/hybrid-connectivity-azure/)** - 40 min
+1. **[Choose an Azure compute service](https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree)** - 45 min
+2. **[Design network solutions](https://learn.microsoft.com/en-us/training/modules/design-network-solutions/)** - 50 min
+3. **[Reliability design principles](https://learn.microsoft.com/en-us/azure/well-architected/reliability/principles)** - 45 min
+4. **[Azure ExpressRoute documentation](https://learn.microsoft.com/en-us/azure/expressroute/expressroute-introduction)** - 40 min
 
 ---
 

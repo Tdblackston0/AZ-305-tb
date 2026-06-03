@@ -488,10 +488,10 @@ If node utilization < 50% → Remove nodes
 
 ## Key Microsoft Learn Resources
 
-1. **[Choose the right compute service](https://learn.microsoft.com/training/modules/choose-compute-service-azure/)** - 45 min
-2. **[Design scalable applications](https://learn.microsoft.com/training/modules/app-service-plan-azure-apps/)** - 40 min
-3. **[Microservices architecture with AKS](https://learn.microsoft.com/training/paths/azure-kubernetes-service-microservices/)** - 2 hours
-4. **[Azure Functions fundamentals](https://learn.microsoft.com/training/modules/azure-functions-core-components/)** - 30 min
+1. **[Choose the right compute service for your Azure application](https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree)** - 45 min
+2. **[Scale Apps in Azure App Service](https://learn.microsoft.com/en-us/training/modules/scale-apps-app-service/)** - 40 min
+3. **[Introduction to Kubernetes on Azure](https://learn.microsoft.com/en-us/training/paths/intro-to-kubernetes-on-azure/)** - 2 hours
+4. **[Azure Functions overview and development](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview)** - 30 min
 
 **Total Study Time:** 2-3 hours  
 **Hands-On Labs:** 2 hours

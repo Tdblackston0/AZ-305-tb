@@ -95,24 +95,30 @@ This study guide is organized by **weakness priority** to help you make those 28
 ## 🔗 Key Microsoft Learn Resources
 
 ### Governance & Policy
-- [Govern subscriptions and costs](https://learn.microsoft.com/training/modules/govern-subscriptions/)
-- [Implement Azure Policy](https://learn.microsoft.com/training/modules/implement-resource-management-locks/)
-- [Manage access to Azure resources](https://learn.microsoft.com/training/modules/manage-access-azure-resources/)
+- [Organize resources with Azure management groups](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview)
+- [Introduction to Azure Policy](https://learn.microsoft.com/en-us/training/modules/intro-to-azure-policy/)
+- [Control Azure services with RBAC](https://learn.microsoft.com/en-us/training/modules/secure-azure-resources-with-rbac/)
 
 ### Application Architecture
-- [Design compute solutions](https://learn.microsoft.com/training/modules/compute-solutions/)
-- [Design application architecture](https://learn.microsoft.com/training/modules/app-architecture-fundamentals/)
-- [Choose the right compute service](https://learn.microsoft.com/training/modules/choose-compute-service-azure/)
+- [Choose the right compute service for your application](https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree)
+- [Scale Apps in Azure App Service](https://learn.microsoft.com/en-us/training/modules/scale-apps-app-service/)
+- [Introduction to Kubernetes on Azure](https://learn.microsoft.com/en-us/training/paths/intro-to-kubernetes-on-azure/)
 
 ### Data Integration
-- [Design data integration](https://learn.microsoft.com/training/modules/design-data-integration/)
-- [Azure Data Factory fundamentals](https://learn.microsoft.com/training/modules/data-factory-fundamentals/)
-- [Design data pipelines](https://learn.microsoft.com/training/modules/design-data-pipelines/)
+- [Design data integration](https://learn.microsoft.com/en-us/training/modules/design-data-integration/)
+- [Data integration at scale with Azure Data Factory](https://learn.microsoft.com/en-us/training/paths/data-integration-scale-azure-data-factory/)
+- [Pipelines and activities in Azure Data Factory](https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities)
 
 ### Identity & Monitoring
-- [Secure your Azure resources with Azure RBAC](https://learn.microsoft.com/training/modules/secure-azure-resources-with-rbac/)
-- [Design an enterprise governance strategy](https://learn.microsoft.com/training/modules/enterprise-governance/)
-- [Monitor and maintain Azure resources](https://learn.microsoft.com/training/modules/monitor-azure-resources/)
+- [Training for Microsoft Entra ID](https://learn.microsoft.com/en-us/training/entra/)
+- [Plan, implement, and administer Conditional Access](https://learn.microsoft.com/en-us/training/modules/plan-implement-administer-conditional-access/)
+- [AZ-104: Monitor and back up Azure resources](https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/)
+
+### Infrastructure Solutions
+- [Choose an Azure compute service](https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree)
+- [Design network solutions](https://learn.microsoft.com/en-us/training/modules/design-network-solutions/)
+- [Reliability design principles](https://learn.microsoft.com/en-us/azure/well-architected/reliability/principles)
+- [Azure ExpressRoute documentation](https://learn.microsoft.com/en-us/azure/expressroute/expressroute-introduction)
 
 ---
 
