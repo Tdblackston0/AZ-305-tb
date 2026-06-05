@@ -389,6 +389,95 @@ Policy: Auto-tag with Application name (from RG tag)
 
 ---
 
+### 11. Licensing Requirements for Governance Features
+
+**Important Context:** Not all governance features are included in every Azure subscription. Some require specific Entra ID licenses.
+
+**Licensing Comparison:**
+
+| Feature | License Required | Cost | Notes |
+|---------|-----------------|------|-------|
+| **Resource Locks** | ❌ None | Free | Included in all Azure subscriptions |
+| **Management Groups** | ❌ None | Free | Included in all Azure subscriptions |
+| **Azure Policy** | ❌ None | Free | Included in all Azure subscriptions |
+| **RBAC** | ❌ None | Free | Included in all Azure subscriptions |
+| **PIM (Privileged Identity Management)** | ✅ Azure AD Premium P2 | ~$25/user/month | Can license specific users who need it |
+| **Access Reviews** | ✅ Azure AD Premium P2 | ~$25/user/month | Can license specific users who need it |
+
+---
+
+### **Azure AD Premium P2 Includes:**
+- Privileged Identity Management (PIM)
+- Access Reviews
+- Identity Protection
+- Conditional Access advanced features
+
+**Alternative:** Microsoft 365 E5 license includes Azure AD Premium P2
+
+---
+
+### **Real-World Licensing Strategy:**
+
+**Typical organization with 1,000 employees:**
+- ✅ **Free features** apply to everyone:
+  - Resource Locks, Management Groups, Policy, RBAC
+
+- ✅ **P2 licenses** for ~50-100 people:
+  - Admins (PIM-eligible roles)
+  - Security/compliance teams (Access Reviews)
+  - Sensitive users requiring identity protection
+
+- ✅ **Cost estimate:** 50 users × $25 = $1,250/month
+
+---
+
+### **Exam Traps to Avoid:**
+
+❌ **Trap 1:** "Implement PIM for all developers"
+✅ **Better:** "Implement PIM for admin roles; developers get standard RBAC with quarterly Access Reviews"
+
+❌ **Trap 2:** "Design Access Reviews organization-wide"
+✅ **Better:** "Implement Access Reviews for privileged roles and critical resources; document review process for other roles"
+
+❌ **Trap 3:** "Every user needs P2 licensing"
+✅ **Better:** "License admins and security staff with P2; use alternative cost-effective solutions for other users"
+
+---
+
+### **Exam Scenario with Licensing:**
+"Design access governance for a 500-person company with $5K/month IT budget. Ensure least privilege for admins and regular access reviews."
+
+**Good Answer:**
+- Use Resource Locks (free) for production resources
+- Assign RBAC at MG level (free)
+- Implement PIM for 30 admin accounts (~$750/month)
+- Quarterly Access Reviews via P2 licensing
+- Cost: ~$1,000/month (within budget)
+
+**Poor Answer:**
+- "Implement PIM for all 500 users" (unrealistic cost)
+- "Use Access Reviews for everyone" (licensing expense)
+
+---
+
+### **When to Recommend Premium Licensing:**
+
+✅ **Recommend P2 when:**
+- Organization has regulatory/compliance requirements
+- Admin accounts have high-risk access
+- Sensitive data or systems involved
+- Security incident response is critical
+
+❌ **Don't recommend P2 for:**
+- Small organizations (<50 people)
+- Low-sensitivity environments
+- Development/test accounts
+- Cost-constrained startups
+
+**Microsoft Learn:** [Azure AD Licensing](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-whatis)
+
+---
+
 ## Decision Trees
 
 ### "Should I use a Policy or an Initiative?"
@@ -513,6 +602,9 @@ Does a built-in role match your needs?
 - [ ] Create comprehensive tagging strategy
 - [ ] Enforce tagging with Policy
 - [ ] Know when to use Locks vs RBAC vs Policy
+- [ ] Understand licensing requirements (P2 for PIM/Access Reviews)
+- [ ] Know when to recommend premium licensing
+- [ ] Recognize licensing exam traps
 
 ---
 
@@ -526,8 +618,9 @@ Does a built-in role match your needs?
 6. **[Access Reviews](https://learn.microsoft.com/en-us/azure/active-directory/governance/access-reviews-overview)** - 20 min
 7. **[Lock resources to prevent unexpected changes](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources)** - 15 min
 8. **[Use tags to organize Azure resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources)** - 20 min
+9. **[Azure AD Licensing](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-whatis)** - 10 min
 
-**Total Study Time:** 4-5 hours  
+**Total Study Time:** 4.5-5.5 hours  
 **Hands-On Labs:** 1.5 hours
 
 ---
@@ -535,22 +628,32 @@ Does a built-in role match your needs?
 ## Next Steps
 
 1. ✅ Read this guide (you're here!)
-2. **→ Complete Microsoft Learn modules (all 8 paths above)**
-3. **→ Do hands-on labs:**
+2. **→ Complete Microsoft Learn modules (all 9 paths above)**
+3. **→ Understand licensing constraints:**
+   - Identify which features are free vs Premium P2
+   - Practice recommending cost-effective solutions
+   - Avoid licensing traps in exam scenarios
+4. **→ Do hands-on labs:**
    - Create Management Group hierarchy
    - Assign RBAC and custom roles
    - Create and test Azure Policies
    - Set up Resource Locks
    - Configure PIM and Access Reviews
    - Implement tagging strategy with Policy
-4. **→ Work through the practice scenarios**
-5. **→ Take practice exam questions on governance**
+5. **→ Work through the practice scenarios (pay attention to budget constraints)**
+6. **→ Take practice exam questions on governance**
 
 **Priority order if short on time:**
 1. Management Groups + RBAC (foundation)
 2. Azure Policy (enforcement)
-3. PIM + Access Reviews (security controls)
+3. PIM + Access Reviews (security controls) + Licensing context
 4. Cost Management (business value)
 5. Tags + Locks (operational excellence)
+
+**Licensing-specific exam prep:**
+- Practice recommending features within budget constraints
+- Know which features are free (don't over-recommend P2)
+- Understand total cost of ownership (licensing + Azure resources)
+- Recognize when licensing questions are trick questions
 
 **You've got this! Governance is learnable, and you're close to passing.** 🚀

@@ -14,6 +14,7 @@
 1. [Quick Service Comparison](#1-quick-service-comparison)
 2. [Azure Service Bus](#2-azure-service-bus)
 3. [Azure Event Hubs](#3-azure-event-hubs)
+   - 3a. [Event Hubs + Time Series Insights (TSI)](#event-hubs--time-series-insights-tsi-pattern)
 4. [Azure Storage Queues](#4-azure-storage-queues)
 5. [Azure Event Grid](#5-azure-event-grid)
 6. [Apache Kafka on Azure](#6-apache-kafka-on-azure)
@@ -192,6 +193,72 @@ Events → Event Hub → Automatic capture → ADLS Gen2 / Blob
 - **Throughput Units (TUs):** ~$0.032 per hour (1 TU)
 - **Premium:** ~$0.925 per hour (dedicated cluster)
 - **Captured data:** Storage charges only
+
+### Event Hubs + Time Series Insights (TSI) Pattern
+
+**Common scenario:** IoT devices send telemetry → Event Hub → TSI for time-series analytics
+
+```
+IoT Devices (sensors, equipment)
+    ↓
+Event Hub (ingestion layer)
+    ↓
+├─→ Azure Time Series Insights (time-series queries, UI)
+├─→ Stream Analytics (real-time alerting)
+└─→ Event Hub Capture (archive to ADLS Gen2)
+```
+
+**Configuration:**
+
+| Component | Role | Configuration |
+|---|---|---|
+| **Event Hub** | Central ingestion point | 1-2 TUs, standard tier, auto-inflate |
+| **Partition Key** | Device identification | `deviceId` to ensure ordering per device |
+| **TSI Instance** | Time-series storage & analytics | Gen2, partition by device ID, 30-day warm retention |
+| **TSI Variables** | Computed metrics | Avg temp, humidity alerts, anomaly detection |
+| **TSI Hierarchies** | Organize data | Building → Floor → Room → Sensor |
+
+**Example IoT + TSI Data Flow:**
+
+```json
+// Raw event from IoT Hub → Event Hub
+{
+  "deviceId": "sensor-floor2-room201",
+  "temperature": 23.5,
+  "humidity": 62,
+  "co2": 420,
+  "timestamp": "2024-06-04T14:30:00Z"
+}
+
+// TSI stores and makes queryable:
+{
+  "Time Series ID": "sensor-floor2-room201",
+  "Timestamp": "2024-06-04T14:30:00Z",
+  "Variables": {
+    "AvgTemperature": 23.5,
+    "HighHumidityAlert": 0,
+    "CO2Anomaly": false
+  },
+  "Hierarchy": ["Building-A", "Floor-2", "Room-201"]
+}
+
+// TSI Explorer returns trend data, alerts, and aggregations
+```
+
+**Exam Scenario:** "Design a solution for 10,000 IoT devices sending 1 reading per minute. Need real-time dashboard showing last 30 days of building temperature trends per floor."
+
+**Answer:** 
+- Event Hub with 4-6 TUs (10K devices × 60 readings/hour = ~167K events/hour)
+- Partition key = `deviceId` for per-device ordering
+- TSI Gen2 instance with warm retention 30 days
+- TSI Hierarchies: Building → Floor → Sensors
+- TSI Explorer dashboard with time-series aggregations (avg, min, max per floor)
+- **Cost:** ~$200-300/month (Event Hub + TSI storage)
+
+**Why NOT alternatives?**
+- ❌ Stream Analytics alone: Can't query historical data for trends
+- ❌ Data Lake: Overkill for this volume, no pre-built time-series UI
+- ❌ Synapse: Slower queries, manual schema management
 
 ---
 

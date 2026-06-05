@@ -17,7 +17,8 @@
 4. [Azure Data Factory](#4-azure-data-factory)
 5. [Azure Databricks](#5-azure-databricks)
 6. [Azure Stream Analytics](#6-azure-stream-analytics)
-6a. [Azure Data Explorer (Kusto)](#6a-azure-data-explorer-kusto)
+6a. [Azure Time Series Insights (TSI)](#6b-azure-time-series-insights-tsi)
+6b. [Azure Data Explorer (Kusto)](#6a-azure-data-explorer-kusto)
 7. [Azure HDInsight](#7-azure-hdinsight)
 8. [Data Architecture Patterns](#8-data-architecture-patterns)
 9. [Data Governance](#9-data-governance)
@@ -537,6 +538,143 @@ GROUP BY UserId, SessionWindow(minute, 5)
 | **VS Code local** | Develop and test locally |
 
 > 🎯 **AZ-305 Tip:** Stream Analytics is the answer for "real-time" + "SQL-based" + "low code." If the scenario needs complex Spark Streaming logic, use Databricks Structured Streaming instead.
+
+---
+
+## 6b. Azure Time Series Insights (TSI)
+
+### What is TSI?
+
+**Azure Time Series Insights** is a **fully managed PaaS service for ingesting, storing, and analyzing time-series data at scale**—optimized for IoT telemetry, sensor readings, and temporal analytics.
+
+### TSI Architecture
+
+```
+IoT Devices / Sensors
+  ↓
+Event Hub / IoT Hub
+  ↓
+Azure Time Series Insights (ingestion)
+  ↓
+TSI Store (warm + cold storage)
+  ↓
+TSI Explorer / Power BI / APIs
+  ↓
+Visualization, Analytics, Alerts
+```
+
+### Key Features
+
+| Feature | Description | Use Case |
+|---------|-------------|----------|
+| **Schema inference** | Auto-detects fields and types | No manual schema definition |
+| **Time-series variables** | Aggregate functions, interpolation, transformation | Calculate KPIs from raw data |
+| **Event aggregation** | GROUP BY time intervals + dimensions | Rolling statistics, trends |
+| **Hierarchies** | Organize data (location → building → floor → room) | Intuitive data exploration |
+| **Warm storage** | Queryable recent data (configurable retention) | Fast queries on hot data |
+| **Cold storage** | Archive older data (low-cost ADLS Gen2) | Long-term retention |
+| **Time-series ID** | Partition key identifying distinct series | Per-device metrics |
+| **Multi-tenancy** | Isolate customer data | SaaS platforms |
+
+### TSI vs Alternatives
+
+| Tool | Best For | Limitation |
+|---|---|---|
+| **TSI** | Pre-built IoT analytics, fast time-series queries, schema flexibility | Smaller data volumes than Data Lake |
+| **Stream Analytics** | Real-time stream processing, low-latency alerts | Not designed for historical time-series queries |
+| **Data Lake + Spark** | Massive scale, complex ML, full data ownership | Requires manual schema, more operational overhead |
+| **Data Explorer (Kusto)** | High-velocity ingestion, complex KQL queries | Less IoT-optimized UI, steeper learning curve |
+| **Synapse** | Massive scale + SQL DW | Not ideal for streaming ingestion patterns |
+
+### Exam Scenarios
+
+| Scenario | Best Choice | Why |
+|---|---|---|
+| "Store and query 100M IoT sensor readings with time-series aggregation" | TSI or Data Lake | TSI if fast time-series queries, Data Lake if massive scale |
+| "Real-time anomaly detection from device telemetry" | Stream Analytics + ML | TSI is not real-time enough for live alerts |
+| "Dashboard showing last 30 days of temperature trends per building" | TSI Explorer | Purpose-built visualization layer |
+| "Analyze 5 years of historical sensor data with complex ML models" | Data Lake + Databricks | TSI cold storage too expensive for deep history |
+| "Store IoT data then replicate to on-premises for offline analysis" | Data Lake or Data Explorer | Direct export capability, more flexible |
+
+### Common TSI Patterns
+
+**Pattern 1: Ingest from Event Hub**
+```
+IoT Devices → Event Hub → TSI Gen2 Instance
+└─ Auto schema inference
+└─ Partitioned by Time-Series ID (device ID)
+```
+
+**Pattern 2: Aggregate with Time-Series Variables**
+```
+Raw Data: {"temperature": 23.5, "humidity": 60, "timestamp": "..."}
+   ↓
+Variable 1: Avg Temperature = AVG($event.temperature)
+Variable 2: High Humidity Alert = $event.humidity > 80 ? 1 : 0
+   ↓
+Result: Time-series queryable metrics
+```
+
+**Pattern 3: Hierarchical Organization**
+```
+Hierarchy:
+  ├─ Americas
+  │  ├─ Building A
+  │  │  └─ Floor 2
+  │  │     └─ Room 201 (sensor)
+  │  └─ Building B
+  └─ EMEA
+     └─ ...
+```
+
+### Pricing & Capacity
+
+| Tier | Ingestion | Storage | Best For |
+|------|-----------|---------|----------|
+| **Gen1** | Legacy | 1 GB fixed | Deprecated |
+| **Gen2** | Pay-per-message | Pay-per-GB (warm) | Standard choice |
+
+**Gen2 Pricing:**
+- Ingestion: $0.035 per million events
+- Warm storage: $0.50-1.00 per GB/month
+- Cold storage (ADLS Gen2): $0.023 per GB/month
+
+**Example:** 1M device readings/day (30M/month) + 3-month warm retention
+- Ingestion: ~$1/month
+- Warm storage: ~$100-200/month (depending on payload size)
+- **Total: ~$100-200/month** for a small IoT fleet
+
+### Real-World Example: Smart Building
+
+**Scenario:** 500 rooms, 5 sensors per room (temp, humidity, occupancy, CO2, light), 1 reading per minute
+
+**Data volume:**
+- 500 × 5 × 60 × 24 = 3.6M readings/day
+- Average payload: ~100 bytes
+- 360 MB/day ingestion
+
+**Solution:**
+1. **IoT Hub** ingests sensor data from devices
+2. **Event Hub** routes to TSI
+3. **TSI Gen2** stores with Time-Series ID = "building-room-sensor"
+4. **Hierarchies:** Building → Floor → Room
+5. **Variables:** Avg temperature, High humidity alerts, Occupancy trends
+6. **Explorer:** 30-day warm retention for real-time dashboards
+7. **Cold storage:** Archive older data to ADLS Gen2 for annual compliance reports
+
+**Cost:** ~$150/month ingestion + storage (well within budget for analytics value)
+
+### AZ-305 Decision Flow
+
+```
+IoT scenario with time-series telemetry?
+  │
+  ├─ Real-time alerts needed? → Stream Analytics
+  ├─ Pre-built time-series analytics UI? → TSI
+  ├─ Massive scale (100M+ events/day)? → Data Lake + Spark or Data Explorer
+  ├─ Simple dashboard on recent data? → TSI Explorer
+  └─ Complex ML on historical data? → Data Lake + Databricks
+```
 
 ---
 

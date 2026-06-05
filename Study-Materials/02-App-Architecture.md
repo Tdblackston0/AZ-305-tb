@@ -23,14 +23,14 @@ Key challenge: **There's no one "right" answer** - it depends on requirements li
 
 ### Decision Matrix: Which Compute Service?
 
-| Factor | VMs | VMSS | App Service | AKS | Functions | Logic Apps |
-|--------|-----|------|-------------|-----|-----------|-----------|
-| **Control** | Full | Full | Medium | Full | Low | Very Low |
-| **Scaling** | Manual | Auto | Auto | Auto | Auto | Auto |
-| **Cost** | High | High | Medium | High | Pay/use | Pay/use |
-| **Ops Overhead** | High | Medium | Low | High | Very Low | Very Low |
-| **Containerization** | No | No | Yes (optional) | Yes (required) | No | No |
-| **State Management** | Local | Stateless only | Session state | Stateless preferred | Stateless | Stateless |
+| Factor | VMs | VMSS | App Service | AKS | Functions | ACI | Logic Apps |
+|--------|-----|------|-------------|-----|-----------|-----|-----------|
+| **Control** | Full | Full | Medium | Full | Low | Medium | Very Low |
+| **Scaling** | Manual | Auto | Auto | Auto | Auto | Manual | Auto |
+| **Cost** | High | High | Medium | High | Pay/use | Pay/second | Pay/use |
+| **Ops Overhead** | High | Medium | Low | High | Very Low | Low | Very Low |
+| **Containerization** | No | No | Yes (optional) | Yes (required) | No | Yes (required) | No |
+| **State Management** | Local | Stateless only | Session state | Stateless preferred | Stateless | Stateless | Stateless |
 
 ---
 
@@ -210,7 +210,84 @@ Key challenge: **There's no one "right" answer** - it depends on requirements li
 
 ---
 
-## 5. Logic Apps (Workflow Automation)
+## 6. Azure Container Instances (ACI)
+
+**Use When:**
+- Need to run containers without managing infrastructure
+- Workloads are simple (don't need orchestration)
+- Short to medium-length jobs (batch processing, scripts)
+- Want faster deployment than AKS
+- Need to burst capacity temporarily
+
+**Advantages:**
+- Containers without infrastructure management
+- Faster startup than AKS
+- Simple pricing (pay per second of execution)
+- No cluster to manage
+- Good for batch jobs, testing, CI/CD
+
+**Disadvantages:**
+- No auto-scaling (manual only)
+- Limited to single container or small groups
+- Not suitable for complex orchestration
+- No built-in service discovery
+- Better for stateless, short-duration workloads
+
+**Pricing Model:**
+- Pay per second for CPU and memory used
+- Minimum charge per container
+- Example: 1 vCPU + 1 GB RAM for 1 hour = ~$0.03
+
+**ACI vs Functions vs AKS:**
+```
+Functions:
+├─ Best for: Event-triggered, ultra-short tasks (<15 min)
+├─ Scaling: Fully automatic
+└─ Cost: Cheapest for sporadic work
+
+ACI:
+├─ Best for: Batch jobs, testing, simple containers (15 min - hours)
+├─ Scaling: Manual (start/stop containers)
+└─ Cost: Pay-per-second (good for burst work)
+
+AKS:
+├─ Best for: Complex microservices, always-on services
+├─ Scaling: Auto-scaling with orchestration
+└─ Cost: Highest but fully featured
+```
+
+**Common Use Cases:**
+- Batch processing (ETL jobs, data processing)
+- Testing containerized applications
+- CI/CD pipeline agents
+- Burst capacity during peak times
+- Development/debugging containers
+- Background workers (async tasks)
+
+**Exam Scenario:** "You need to run a batch processing job that takes 30 minutes and runs weekly. The job uses a Docker container. Cost is critical, and you don't need auto-scaling. What's the best approach?"
+- **Answer:** Azure Container Instances - pay only for the 30 minutes of execution, no infrastructure overhead, container runs reliably
+
+**vs Functions:** Why not use Functions?
+- If job takes 30 minutes, Functions are limited to 15 min (Premium tier) or 10 min (Consumption)
+- If you already have a Docker container built, ACI is simpler than rebuilding as a Function
+
+**vs AKS:** Why not use AKS?
+- AKS requires paying for nodes (~$50-100/month minimum)
+- ACI: Pay $0.03 for the 30-minute job once per week = ~$0.12/month
+- AKS overhead not justified for simple batch workload
+
+**Hands-On Task:**
+```
+1. Create a Docker image locally
+2. Push to Azure Container Registry
+3. Deploy container instance via Azure CLI
+4. Monitor resource usage and costs
+5. Compare pricing: ACI vs AKS vs Functions
+```
+
+---
+
+## 6. Logic Apps (Workflow Automation)
 
 **Use When:**
 - Workflow orchestration (not computation)
@@ -334,18 +411,24 @@ START
   │  NO → Continue
   │
   ├─ Containerized application?
-  │  YES → AKS or App Service containers
-  │  NO → Continue
+  │  YES → Continue
+  │  NO → Go to "Traditional web/API app?"
+  │
+  ├─ Is it a batch/simple job? (Not always-on)
+  │  YES → Azure Container Instances (ACI)
+  │  NO → Complex orchestration with auto-scale needed?
+  │       YES → AKS
+  │       NO → App Service containers
   │
   ├─ Traditional web/API app?
   │  YES → App Service
   │  NO → Continue
   │
-  ├─ Event-driven or short tasks?
+  ├─ Event-driven or short tasks (<15 min)?
   │  YES → Azure Functions
   │  NO → Continue
   │
-  ├─ Workflow orchestration?
+  ├─ Workflow orchestration (SaaS integration)?
   │  YES → Logic Apps
   │  NO → Reconsider requirements
 ```
@@ -479,10 +562,16 @@ If node utilization < 50% → Remove nodes
 **Simple internal app? Low traffic?** → App Service Free/Basic  
 **High-traffic web app?** → App Service Standard + auto-scale  
 **Needs full OS control?** → VM or VMSS  
-**Container workload?** → AKS or App Service containers  
+**Container batch/testing job?** → Azure Container Instances  
+**Container workload (complex)?** → AKS or App Service containers  
 **Microservices?** → AKS  
-**Event-driven workload?** → Azure Functions  
-**Workflow integration?** → Logic Apps  
+**Event-driven or short tasks?** → Azure Functions  
+**Workflow integration (SaaS)?** → Logic Apps
+
+**Cost comparison for batch job (1 hour/week):**
+- Functions: ~$0.50/month (but limited to 15 min max)
+- ACI: ~$0.12/month (3,600 seconds × $0.000035/sec × 4 weeks)
+- AKS: ~$50+/month (minimum node cost)  
 
 ---
 
@@ -492,9 +581,10 @@ If node utilization < 50% → Remove nodes
 2. **[Scale Apps in Azure App Service](https://learn.microsoft.com/en-us/training/modules/scale-apps-app-service/)** - 40 min
 3. **[Introduction to Kubernetes on Azure](https://learn.microsoft.com/en-us/training/paths/intro-to-kubernetes-on-azure/)** - 2 hours
 4. **[Azure Functions overview and development](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview)** - 30 min
+5. **[Azure Container Instances overview](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-overview)** - 20 min
 
-**Total Study Time:** 2-3 hours  
-**Hands-On Labs:** 2 hours
+**Total Study Time:** 2.5-3.5 hours  
+**Hands-On Labs:** 2.5 hours
 
 ---
 

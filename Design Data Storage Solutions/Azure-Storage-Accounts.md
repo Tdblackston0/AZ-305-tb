@@ -218,16 +218,104 @@ Is this production data?
 
 ### SAS Token Types
 
-| Type | Signed With | Scope | Best For |
-|------|-------------|-------|----------|
-| **User Delegation SAS** | Entra ID credentials | Blob only | ⭐ Most secure SAS |
-| **Service SAS** | Account key | Single service | Scoped access |
-| **Account SAS** | Account key | Multiple services | Broader access |
+| Type | Signed With | Scope | Best For | Services |
+|------|-------------|-------|----------|----------|
+| **User Delegation SAS** | Entra ID credentials | Specific blob/container | ⭐ Most secure SAS | Blob only |
+| **Service SAS** | Account key | Single service (container/queue/table/share) | Scoped access | All |
+| **Account SAS** | Account key | Multiple services (Blob, Files, Queues, Tables) | Broader access | All |
+
+**SAS Works Across All Storage Services:**
+- **Blob Storage** - Share containers/blobs with time-limited access
+- **Azure Files (File Shares)** - Grant temporary SMB/NFS access to file shares
+- **Queue Storage** - Time-limited queue message access
+- **Table Storage** - Scoped table entity access
+
+**Example SAS URI formats:**
+```
+Blob: https://account.blob.core.windows.net/container/blob.txt?sv=2021-06-08&sig=...
+File: https://account.file.core.windows.net/share/file.txt?sv=2021-06-08&sig=...
+Queue: https://account.queue.core.windows.net/queue?sv=2021-06-08&sig=...
+Table: https://account.table.core.windows.net/table?sv=2021-06-08&sig=...
+```
 
 ### Stored Access Policies
 - Attach to a container/queue/table/share
 - Can revoke SAS tokens by modifying or deleting the policy
 - **Cannot be used with User Delegation SAS**
+- Allows central revocation without rotating account key
+
+**When to use stored access policies:**
+- Multiple SAS tokens for same resource (revoke all at once)
+- Need to adjust expiry time without regenerating token
+- Compliance requirement for audit trail
+
+### SAS Best Practices & Exam Tips
+
+| Scenario | Best Choice | Why |
+|----------|-------------|-----|
+| "Grant read-only to specific blob for 1 hour" | User Delegation SAS | Most secure (Entra ID backed) |
+| "External partner needs file share access for one week" | Service SAS (File) | Scoped to File service, time-bound |
+| "Automated tool needs queue access" | Service SAS (Queue) with Stored Policy | Revocable, no account key exposure |
+| "Need to revoke access immediately" | Stored Access Policy | Modify policy = instant revocation |
+| "Least privilege access for app" | Managed Identity + RBAC | Better than any SAS (no token to leak) |
+| "Time-limited admin access to all services" | Account SAS | Broader scope but fully constrained |
+
+**Exam Traps:**
+- ❌ "Use SAS to give permanent access" → Wrong; SAS is time-limited only
+- ❌ "SAS only works for Blob storage" → Wrong; works for Files, Queues, Tables too
+- ❌ "SAS is more secure than RBAC" → Wrong; Managed Identity + RBAC preferred over SAS
+- ❌ "Rotate account key to revoke SAS" → Wrong; use Stored Access Policy for instant revocation
+- ❌ "User Delegation SAS can be used for Files" → Wrong; User Delegation SAS is Blob-only
+
+### SAS Generation & Security Commands
+
+```bash
+# Generate Account SAS (Azure CLI)
+az storage account generate-sas \
+  --account-name storageaccount \
+  --account-key <key> \
+  --expiry 2024-06-05T00:00Z \
+  --permissions racwd \
+  --resource-types sco \
+  --services bfqt
+
+# Generate Blob Service SAS
+az storage blob generate-sas \
+  --account-name storageaccount \
+  --account-key <key> \
+  --container-name mycontainer \
+  --name myblob.txt \
+  --permissions racwd \
+  --expiry 2024-06-05T01:00Z
+
+# Generate File Service SAS
+az storage file generate-sas \
+  --account-name storageaccount \
+  --account-key <key> \
+  --share-name fileshare \
+  --path folder/file.txt \
+  --permissions rcwd \
+  --expiry 2024-06-05T01:00Z
+```
+
+```powershell
+# Generate User Delegation SAS (most secure)
+$ctx = New-AzStorageContext -StorageAccountName storageaccount -UseConnectedAccount
+$sasToken = New-AzStorageBlobSASToken -Container mycontainer -Blob myblob.txt -Permission racwd -ExpiryTime (Get-Date).AddHours(1) -Context $ctx
+
+# Generate Service SAS
+$sasUri = New-AzStorageBlobSASToken -Container mycontainer -Blob myblob.txt -Permission r -ExpiryTime (Get-Date).AddDays(1) -Context (New-AzStorageContext -StorageAccountName storageaccount -StorageAccountKey <key>)
+```
+
+**SAS Security Checklist:**
+- ✅ Use User Delegation SAS over Service/Account SAS when possible (Blob only)
+- ✅ Always set explicit expiry time (never omit)
+- ✅ Use Stored Access Policy for revocability
+- ✅ Restrict permissions to minimum needed (read-only when possible)
+- ✅ Use HTTPS only (disable HTTP)
+- ✅ Consider IP restrictions if possible
+- ✅ Monitor SAS usage in storage logs/diagnostics
+- ❌ Never hardcode SAS tokens in code (use Key Vault or Managed Identity instead)
 
 ### Encryption
 
@@ -241,7 +329,10 @@ Is this production data?
 - "Comply with regulatory requirement for customer-controlled keys" → **CMK with Key Vault**
 - "Ensure data is encrypted with two different algorithms" → **Infrastructure encryption**
 - "Revoke access immediately" → **Stored Access Policy** (for Service SAS) or **rotate keys**
-- "Least privilege access for an app" → **Managed Identity + RBAC**
+- "Least privilege access for an app" → **Managed Identity + RBAC** (better than SAS)
+- "Grant time-limited access to file share for external partner" → **Service SAS for File service**
+- "Most secure time-limited blob access" → **User Delegation SAS** (Blob only)
+- "Need access across Blob, Files, and Queues" → **Account SAS** (if SAS must be used)
 
 ---
 

@@ -18,6 +18,87 @@
 
 ## Core Concepts
 
+### Access Control in Data Integration
+
+**Best Practice Hierarchy for Data Pipelines:**
+
+| Method | Use in Pipelines | Security Level | Exam Priority |
+|--------|------------------|----------------|---------------|
+| **Managed Identity** | ⭐ Best for Azure services | Highest (no secrets) | ⭐ Preferred |
+| **User Delegation SAS** | Good for Blob access | High (Entra ID backed) | ⭐ Good |
+| **Service SAS** | Acceptable with stored policy | Medium (account key) | Second choice |
+| **Storage Account Key** | Legacy only | Low (shared secret) | Avoid |
+| **Connection Strings** | Legacy only | Low | Avoid |
+
+**For Data Pipelines (ADF, Synapse):**
+- **Managed Identity** - Preferred when accessing Azure storage from data services
+- **SAS** - When external partners need limited time-bound access to storage
+- **Account Keys** - Only for legacy systems; rotation risk
+
+### Shared Access Signatures (SAS) in Data Integration
+
+**When to use SAS in data pipelines:**
+- External partner needs read-only access to specific blobs/files for limited time
+- Third-party tool needs one-week access to data lake
+- Data migration from on-premises with temporary Azure access
+- Temporary failover during DR where identities aren't established yet
+
+**SAS across Azure Storage services:**
+
+| Storage Service | SAS Support | Pipeline Example |
+|---|---|---|
+| **Blob Storage** | ✅ Service SAS, User Delegation SAS | Copy from external blob source |
+| **Azure Files** | ✅ Service SAS | Copy from file share (SMB/NFS) |
+| **Queue Storage** | ✅ Service SAS | Process queue messages |
+| **Table Storage** | ✅ Service SAS | Copy from table entities |
+
+**Example: ADF Copy Activity with SAS**
+```json
+{
+  "type": "Copy",
+  "inputs": [{
+    "referenceName": "ExternalBlobDS",
+    "type": "DatasetReference"
+  }],
+  "outputs": [{
+    "referenceName": "InternalBlobDS",
+    "type": "DatasetReference"
+  }],
+  "linkedServiceName": {
+    "referenceName": "ExternalStorageSAS",
+    "type": "LinkedServiceReference"
+  }
+}
+```
+
+**Linked Service in ADF with SAS:**
+```json
+{
+  "name": "ExternalStorageSAS",
+  "type": "LinkedServiceReference",
+  "properties": {
+    "type": "AzureBlobStorage",
+    "typeProperties": {
+      "sasUri": "https://externalaccount.blob.core.windows.net/?sv=2021-06-08&sig=...",
+      "sasTokenSecretName": "StorageSASToken"
+    },
+    "connectVia": "AutoResolveIntegrationRuntime"
+  }
+}
+```
+
+**Exam Scenario:** "Your company receives daily data files from a vendor in their Azure storage. Vendor will provide SAS token valid for 30 days. Design ADF pipeline for automated daily copy."
+- **Answer:** 
+  - Create linked service with SAS token stored in Key Vault
+  - ADF copy activity from vendor storage (using SAS) to internal storage (using Managed Identity)
+  - Schedule daily copy
+  - Set SAS expiry alert 5 days before expiration
+  - Procedure to rotate SAS when vendor regenerates token
+
+---
+
+## Core Concepts
+
 ### ETL vs ELT: Critical Distinction
 
 | Aspect | ETL | ELT |
@@ -43,9 +124,15 @@
 **Key Concepts:**
 - **Pipeline** - Workflow of activities
 - **Activity** - Individual task (copy data, execute script, run notebook)
-- **Linked Service** - Connection to data source/destination
+- **Linked Service** - Connection to data source/destination (stores authentication: Managed Identity, SAS, keys)
 - **Dataset** - Named reference to data in a source
 - **Integration Runtime** - Compute that executes activities
+
+**Authentication in ADF Linked Services:**
+- **Managed Identity** - Best for Azure services (no secrets stored)
+- **Account Key** - Legacy (rotation risk)
+- **SAS Token** - Time-limited external access (store in Key Vault)
+- **Connection String** - Legacy (contains secrets)
 
 **Pipeline Example:**
 ```
@@ -65,6 +152,8 @@ Run stored procedure (validate)
 - Scheduling data movement
 - Complex multi-step pipelines
 - Hybrid scenarios (on-prem + cloud)
+- External partner data ingestion (with SAS tokens)
+- Time-limited temporary access patterns
 
 **Hands-On Lab:**
 ```
