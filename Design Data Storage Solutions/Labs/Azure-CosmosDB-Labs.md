@@ -1,8 +1,22 @@
 # Azure Cosmos DB Hands-On Labs (AZ-305)
 
-> 📖 **Cheat Sheet:** [Azure Cosmos DB Cheat Sheet](../CheatSheets/Azure-CosmosDB.md)
+> 📖 **Cheat Sheet:** [Azure Cosmos DB Cheat Sheet](../Azure-CosmosDB.md)
 
-## Prerequisites
+## Exam Domain Mapping
+
+- **Primary domain:** Design data storage solutions (20-25%)
+- **Secondary domains:** Design infrastructure solutions (30-35%), Design business continuity solutions (15-20%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: NoSQL API Account | API selection, partition key strategy, RU cost model |
+| Lab 2: Consistency Levels | Consistency-latency-availability tradeoff design |
+| Lab 3: Multi-Region Distribution | Global distribution, multi-region writes, automatic failover |
+| Lab 4: Autoscale vs. Provisioned | Throughput model selection for variable vs. steady workloads |
+| Lab 5: Change Feed | Event-driven architecture and real-time processing patterns |
+| Lab 6: Security & Private Access | Zero Trust with Entra RBAC, private endpoints, key disable |
+| Lab 7: Synapse Link | HTAP design for analytics without RU impact |
+| Lab 8: Backup & PITR | Continuous vs. periodic backup and self-service restore design |
 
 - Azure subscription with Contributor access
 - Azure CLI installed (`az --version` ≥ 2.50)
@@ -1624,3 +1638,47 @@ az group delete --name $RG --yes --no-wait
 ---
 
 > **Next Steps:** Practice these labs in sequence. Each builds on concepts tested in AZ-305. Focus on the *why* behind each design decision—the exam tests architectural reasoning, not just CLI syntax.
+
+---
+
+## Exam-Style Review Questions
+
+1. A globally distributed e-commerce application requires that every region can accept writes with single-digit millisecond latency and the highest available SLA. Which Cosmos DB configuration is required?
+
+   **A)** Single-region with Session consistency  
+   **B)** Multi-region reads with Bounded Staleness consistency  
+   **C)** Multi-region writes (multi-master) with Eventual consistency  
+   **D)** Single-region with Strong consistency  
+   > **Answer: C.** Multi-region writes (multi-master) enables writes in all configured regions with the lowest latency and qualifies for the 99.999% SLA. Eventual consistency is the appropriate choice when accepting slightly stale reads is acceptable.
+
+2. A financial application requires that reads always reflect the latest committed write. The application is deployed in a single region. Which Cosmos DB consistency level is the correct choice?
+
+   **A)** Session consistency  
+   **B)** Bounded Staleness  
+   **C)** Strong consistency  
+   **D)** Consistent Prefix  
+   > **Answer: C.** Strong consistency guarantees linearizability—reads always return the most recently committed version. It is appropriate for single-region financial scenarios where data accuracy is critical.
+
+3. A startup expects sporadic, unpredictable bursts of traffic with very low average load. They want to minimize baseline costs. Which Cosmos DB throughput model should they use?
+
+   **A)** Manual provisioned throughput at 1000 RU/s  
+   **B)** Autoscale provisioned throughput with 1000 RU/s max  
+   **C)** Serverless throughput  
+   **D)** Shared database throughput  
+   > **Answer: C.** Serverless is best for unpredictable sporadic workloads with very low average consumption because you only pay per request unit consumed, with no baseline charge.
+
+4. An analytics team wants to run complex SQL queries against Cosmos DB data without impacting transactional workload performance and without building an ETL pipeline. What is the recommended approach?
+
+   **A)** Export data to Azure Data Lake and query with Synapse Serverless  
+   **B)** Enable Cosmos DB Synapse Link and use Synapse Analytics to query the analytical store  
+   **C)** Create a read replica and run queries against it  
+   **D)** Increase provisioned RU/s to absorb both workloads  
+   > **Answer: B.** Cosmos DB Synapse Link creates an analytical store that is automatically synchronized with the transactional store. Queries run against the analytical store using Synapse without consuming transactional RU/s.
+
+5. A team is designing a partition key for a Cosmos DB container that stores IoT telemetry for 10,000 devices, each sending 1 message per minute. Which partition key strategy is most appropriate?
+
+   **A)** `/timestamp` — most writes use the current timestamp  
+   **B)** `/region` — devices are spread across 5 regions  
+   **C)** `/deviceId` — each device is a distinct entity  
+   **D)** `/messageType` — only 3 message types exist  
+   > **Answer: C.** `/deviceId` provides high cardinality (10,000 distinct values) and even distribution of reads and writes. Timestamp creates hot partitions; region creates only 5 logical partitions; messageType creates only 3.

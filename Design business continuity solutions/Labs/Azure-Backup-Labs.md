@@ -6,6 +6,74 @@
 > **Secondary domains:** Design data storage solutions, design identity/governance/monitoring  
 > **Lab focus:** Recovery Services Vault, VM backup/restore, SQL backup, Azure Files, Blob backup, monitoring, and backup security hardening.
 
+## Exam Domain Mapping
+
+- **Primary domain:** Design business continuity solutions (15-20%)
+- **Secondary domains:** Design data storage solutions (20-25%), Design identity, governance, and monitoring solutions (25-30%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: Recovery Services Vault | Vault setup, storage redundancy, soft delete, and private endpoint |
+| Lab 2: Azure VM Backup | VM backup policy design and protection configuration |
+| Lab 3: VM Restore Operations | Recovery point selection and restore type (original location vs. new VM) |
+| Lab 4: Azure SQL Database Backup | Native PITR vs. LTR for compliance retention design |
+| Lab 5: SQL Server in VM Backup | Workload-aware backup for SQL Server workloads on IaaS |
+| Lab 6: Azure Files Backup | Share-level snapshot-based backup and granular file restore |
+| Lab 7: Azure Blob Backup | Operational backup with PITR and change feed for blob data |
+| Lab 8: Backup Center and Monitoring | Centralized backup visibility, alerting, and governance reporting |
+| Lab 9: Backup Security Configuration | Ransomware-resistant backup with soft delete, immutability, and MUA |
+
+## Infrastructure as Code Starter Templates (Bicep & Terraform)
+
+Use these starter templates to deploy a Recovery Services Vault and baseline backup policy before running step-by-step lab commands.
+
+```bicep
+param location string = resourceGroup().location
+param vaultName string
+
+resource vault 'Microsoft.RecoveryServices/vaults@2023-06-01' = {
+  name: vaultName
+  location: location
+  sku: {
+    name: 'RS0'
+    tier: 'Standard'
+  }
+  properties: {
+    publicNetworkAccess: 'Disabled'
+  }
+}
+
+resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2023-06-01' = {
+  parent: vault
+  name: 'vaultconfig'
+  properties: {
+    storageModelType: 'GeoRedundant'
+    softDeleteFeatureState: 'Enabled'
+    crossRegionRestoreFlag: true
+  }
+}
+```
+
+```hcl
+resource "azurerm_recovery_services_vault" "lab" {
+  name                = var.vault_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  sku                 = "Standard"
+  soft_delete_enabled = true
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+```
+
+> **Validation checklist after deployment:**
+> - [ ] Vault appears in Recovery Services Vaults list
+> - [ ] Storage redundancy shows GeoRedundant
+> - [ ] Soft delete shows Enabled under Security Settings
+> - [ ] Public network access shows Disabled (if private endpoint configured)
+
 ---
 
 ## Lab 1: Recovery Services Vault Setup
@@ -1306,7 +1374,7 @@ When the exam mentions **ransomware**, **malicious insider**, or **backup deleti
 
 ---
 
-## Quick Review Questions
+## Exam-Style Review Questions
 
 1. When should you choose **Azure Backup** over **Azure Site Recovery** for a VM workload?
 2. Why is **LTR** the correct answer for long-term Azure SQL Database retention, instead of a Recovery Services Vault?

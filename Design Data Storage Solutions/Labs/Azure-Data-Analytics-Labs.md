@@ -1,12 +1,28 @@
 # Azure Data & Analytics Hands-On Labs
 
-> 📖 **Cheat Sheet:** [Azure Data & Analytics Cheat Sheet](../CheatSheets/Azure-Data-Analytics.md)
+> 📖 **Cheat Sheet:** [Azure Data & Analytics Cheat Sheet](../Azure-Data-Analytics.md)
 
 > **Purpose:** Reinforce AZ-305 data and analytics design concepts through hands-on labs with real Azure CLI commands.
 >
 > **Prerequisites:** Azure subscription, Azure CLI installed (`az --version`), Owner or Contributor role on the subscription.
 >
 > **Cost Warning:** Some resources (Synapse Dedicated Pools, Databricks clusters, Event Hubs) incur significant costs. Always run cleanup commands when finished.
+
+## Exam Domain Mapping
+
+- **Primary domain:** Design data storage solutions (20-25%)
+- **Secondary domains:** Design infrastructure solutions (30-35%), Design identity, governance, and monitoring solutions (25-30%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: Data Lake Gen2 | Non-relational storage – hierarchical namespace and medallion architecture |
+| Lab 2: Synapse Analytics | Data warehousing service selection and dedicated vs. serverless design |
+| Lab 3: Azure Data Factory | Data integration pipeline design and orchestration |
+| Lab 4: Stream Analytics | Real-time analytics and event processing architecture |
+| Lab 5: Azure Databricks | Big data and ML workload platform selection |
+| Lab 6: Microsoft Purview | Data governance, cataloging, and lineage design |
+| Lab 7: Synapse Link | HTAP architecture and operational analytics without ETL |
+| Lab 8: Microsoft Fabric | Unified SaaS analytics lakehouse platform selection |
 
 ---
 
@@ -2411,4 +2427,48 @@ SELECT * FROM dbo.vw_StorePerformance ORDER BY total_revenue DESC;
 
 ---
 
-> 📖 **Cheat Sheet:** [Azure Data & Analytics Cheat Sheet](../CheatSheets/Azure-Data-Analytics.md)
+> 📖 **Cheat Sheet:** [Azure Data & Analytics Cheat Sheet](../Azure-Data-Analytics.md)
+
+---
+
+## Exam-Style Review Questions
+
+1. A data engineering team needs to run ad-hoc exploratory SQL queries against files stored in Azure Data Lake Gen2 without provisioning any dedicated compute or paying for idle resources. Which service is most appropriate?
+
+   **A)** Synapse Dedicated SQL Pool  
+   **B)** Synapse Serverless SQL Pool  
+   **C)** Azure Databricks SQL Warehouse  
+   **D)** Azure SQL Database  
+   > **Answer: B.** Synapse Serverless SQL Pool charges per TB of data scanned with no infrastructure to manage. It is ideal for ad-hoc exploration of data lake files without committed compute.
+
+2. A team runs a predictable daily batch ETL job that requires high concurrency and must complete within 2 hours each night. Which analytics service is most appropriate?
+
+   **A)** Synapse Serverless SQL Pool  
+   **B)** Azure Data Factory with an Azure SQL Database sink  
+   **C)** Synapse Dedicated SQL Pool  
+   **D)** Microsoft Fabric Lakehouse  
+   > **Answer: C.** Synapse Dedicated SQL Pool provides MPP compute for high-concurrency, predictable workloads. It can be paused when not in use, making the cost manageable for nightly batch jobs.
+
+3. A streaming application ingests IoT telemetry from Event Hubs and must apply tumbling window aggregations over 5-minute intervals using SQL syntax without writing custom code. Which service should be used?
+
+   **A)** Azure Databricks Structured Streaming  
+   **B)** Azure Data Factory with copy activity  
+   **C)** Azure Stream Analytics  
+   **D)** Synapse Serverless SQL Pool  
+   > **Answer: C.** Azure Stream Analytics is purpose-built for real-time stream processing with SQL-like syntax and native windowing functions (tumbling, hopping, sliding). It connects directly to Event Hubs without custom code.
+
+4. A data governance team needs to automatically scan, classify sensitive data (PII, financial), and build a cross-estate data lineage map across Azure SQL, Data Lake, and on-premises SQL Server. Which service should they use?
+
+   **A)** Microsoft Defender for Cloud  
+   **B)** Azure Monitor with Log Analytics  
+   **C)** Microsoft Purview  
+   **D)** Azure Policy with classification initiatives  
+   > **Answer: C.** Microsoft Purview provides automated scanning, sensitivity classification, business glossary, and end-to-end data lineage across on-premises and cloud data sources.
+
+5. A company wants to adopt a unified SaaS analytics platform that combines a data lake, data warehouse, data engineering, and native Power BI integration in a single managed service with OneLake as the shared storage. Which service should they evaluate?
+
+   **A)** Azure Synapse Analytics  
+   **B)** Azure Databricks + ADLS Gen2  
+   **C)** Microsoft Fabric  
+   **D)** Azure HDInsight  
+   > **Answer: C.** Microsoft Fabric is the strategic SaaS analytics platform that unifies all workloads (lakehouse, warehouse, pipelines, real-time intelligence, Power BI) on a single OneLake storage foundation.

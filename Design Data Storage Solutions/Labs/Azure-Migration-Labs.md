@@ -1,8 +1,28 @@
 # Azure Migration Hands-On Labs (AZ-305)
 
-> 📖 **Cheat Sheet:** [Azure Migration Strategies](../Design Data Storage Solutions/Azure-Migration-Strategies.md)
+> 📖 **Cheat Sheet:** [Azure Migration Strategies](../Azure-Migration-Strategies.md)
 
 > **Purpose:** These labs cover every major Azure migration path tested on AZ-305. Each lab includes both **Azure CLI** and **PowerShell** commands, verification steps, and cleanup. Labs 1–11 are hands-on deployment labs; Lab 12 is a decision-making drill.
+
+## Exam Domain Mapping
+
+- **Primary domain:** Design data storage solutions (20-25%)
+- **Secondary domains:** Design infrastructure solutions (30-35%), Design identity, governance, and monitoring solutions (25-30%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: Azure Migrate Assessment | Pre-migration assessment and right-sizing recommendations |
+| Lab 2: SQL Server → Azure SQL DB (DMS Online) | Near-zero downtime online database migration |
+| Lab 3: SQL Server → Azure SQL DB (BACPAC) | Offline migration for dev/test workloads |
+| Lab 4: SQL Server → MI (Log Replay) | Near-zero downtime migration to SQL Managed Instance |
+| Lab 5: Bulk Data Transfer | AzCopy and Azure Data Box selection for large data volumes |
+| Lab 6: File Server → Azure Files (File Sync) | Hybrid file share migration with cloud tiering |
+| Lab 7: PostgreSQL → Azure DB for PostgreSQL | Open-source database migration patterns |
+| Lab 8: MySQL → Azure DB for MySQL | MySQL migration with DMS online and offline options |
+| Lab 9: MongoDB → Cosmos DB | NoSQL migration and partition key strategy |
+| Lab 10: Oracle → Azure SQL | Heterogeneous migration with SSMA assessment |
+| Lab 11: Data Warehouse → Synapse | Analytics platform migration with ADF and PolyBase |
+| Lab 12: Migration Decision Exercise | Selecting the right migration tool based on requirements |
 
 ---
 
@@ -2673,3 +2693,47 @@ Remove-AzResourceGroup -Name $RG -Force -AsJob
 ---
 
 *Last updated: 2025 | AZ-305 Exam Prep | All labs tested with Azure CLI 2.60+ and Az PowerShell 12+*
+
+---
+
+## Exam-Style Review Questions
+
+1. A company needs to migrate a 500 GB SQL Server database to Azure SQL Database with less than 5 minutes of downtime. Which migration approach should they use?
+
+   **A)** BACPAC export/import via Azure portal  
+   **B)** Azure Database Migration Service (DMS) online migration with CDC  
+   **C)** SqlPackage /Action:Export then /Action:Import  
+   **D)** Full backup and restore to Azure SQL Database  
+   > **Answer: B.** DMS online migration uses Change Data Capture (CDC) to replicate ongoing changes, allowing the source to stay online until cutover, achieving near-zero downtime.
+
+2. A company wants to migrate their existing SQL Server instance to Azure with minimal changes. The application uses SQL Server Agent jobs, CLR assemblies, and cross-database queries. Which target service should they choose?
+
+   **A)** Azure SQL Database (single database)  
+   **B)** Azure SQL Database Hyperscale  
+   **C)** Azure SQL Managed Instance  
+   **D)** SQL Server on Azure VM (IaaS)  
+   > **Answer: C.** SQL Managed Instance provides near-full SQL Server compatibility including SQL Agent, CLR, cross-database queries, and linked servers—making it ideal for lift-and-shift with minimal code changes.
+
+3. An organization needs to transfer 60 TB of on-premises data to Azure Blob Storage. Their internet connection is 1 Gbps with 30% utilization available for transfers. Approximately how long would AzCopy take, and what alternative should be considered?
+
+   **A)** ~2 days via AzCopy; no alternative needed  
+   **B)** ~13 days via AzCopy; consider Azure Data Box  
+   **C)** ~1 day via AzCopy; use ExpressRoute instead  
+   **D)** ~30 days via AzCopy; use Azure Import/Export  
+   > **Answer: B.** At ~300 Mbps effective throughput, 60 TB would take ~13+ days. Azure Data Box (up to 80 TB usable) is the recommended alternative for large offline transfers above ~40 TB or when bandwidth is limited.
+
+4. A MySQL application team wants to migrate to Azure Database for MySQL with minimum downtime. The team wants ongoing replication to run validation queries against the target before final cutover. Which approach best supports this?
+
+   **A)** mysqldump offline migration and DNS cutover  
+   **B)** Azure DMS online migration with CDC or MySQL Data-in Replication  
+   **C)** BACPAC export for MySQL  
+   **D)** Azure Data Factory COPY activity  
+   > **Answer: B.** DMS online migration or MySQL Data-in Replication keeps the target synchronized with the source during validation, enabling teams to test against the target and cut over with minimal downtime.
+
+5. Which tool should a team use FIRST when planning any migration to Azure, before selecting a migration method?
+
+   **A)** Azure Database Migration Service (DMS)  
+   **B)** Azure Migrate with discovery and assessment  
+   **C)** AzCopy for baseline data transfer  
+   **D)** Azure Site Recovery for replication  
+   > **Answer: B.** Azure Migrate provides centralized discovery, dependency analysis, and right-sizing recommendations. Always start with an assessment before selecting migration tools or target services.

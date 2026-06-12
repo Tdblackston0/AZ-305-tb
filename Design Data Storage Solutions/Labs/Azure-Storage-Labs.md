@@ -1,9 +1,25 @@
 # Azure Storage Accounts – Hands-On Labs
 
-> 📖 **Cheat Sheet:** [Azure Storage Accounts](../Design Data Storage Solutions/Azure-Storage-Accounts.md)
+> 📖 **Cheat Sheet:** [Azure Storage Accounts](../Azure-Storage-Accounts.md)
 
 > **Exam Focus:** AZ-305 – Design Data Storage Solutions  
 > **Prerequisite:** Azure CLI installed, active subscription, Owner/Contributor role
+
+## Exam Domain Mapping
+
+- **Primary domain:** Design data storage solutions (20-25%)
+- **Secondary domains:** Design identity, governance, and monitoring solutions (25-30%), Design infrastructure solutions (30-35%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: Lifecycle Management | Storage access tiers and cost optimization via lifecycle policies |
+| Lab 2: Private Endpoint & Network Security | Private access to storage, disabling public endpoint |
+| Lab 3: Immutable Storage (WORM) | Compliance retention and legal hold design |
+| Lab 4: Entra ID RBAC & SAS | Least-privilege access design and SAS token selection |
+| Lab 5: Azure File Sync (Hybrid) | Hybrid file share design with cloud tiering |
+| Lab 6: Data Lake Gen2 with ACLs | POSIX ACL design for hierarchical namespace storage |
+| Lab 7: Customer-Managed Keys | Encryption key ownership and Key Vault integration |
+| Lab 8: Blob Versioning & PITR | Data protection, versioning, and point-in-time restore |
 
 ---
 
@@ -1176,3 +1192,47 @@ az group delete --name $RG --yes --no-wait
 | Big data analytics | ADLS Gen2 (HNS) | POSIX ACLs + hierarchical namespace |
 | Key control & compliance | Customer-Managed Keys | Key Vault + managed identity |
 | Data protection & recovery | Versioning + PITR | Point-in-time restore capability |
+
+---
+
+## Exam-Style Review Questions
+
+1. A company needs to store regulatory compliance records that cannot be modified for seven years and must survive accidental deletion. Which Azure storage feature best meets this requirement?
+
+   **A)** Soft delete  
+   **B)** Immutable storage with time-based retention policy  
+   **C)** Geo-redundant storage (GRS)  
+   **D)** Blob versioning  
+   > **Answer: B.** Immutable storage with a time-based retention policy enforces WORM semantics, preventing modification or deletion during the retention period.
+
+2. A workload generates large log files that are read frequently for the first 30 days, rarely for the next 60 days, and then never accessed again. What is the most cost-effective lifecycle management configuration?
+
+   **A)** Store all blobs in Archive tier from creation  
+   **B)** Hot → Cool at 30 days → Archive at 90 days → Delete at 365 days  
+   **C)** Hot → Cool at 30 days, no further transition  
+   **D)** Store all blobs in Cool tier from creation  
+   > **Answer: B.** Transitioning through Hot → Cool → Archive based on last-modified time minimizes both storage and access costs over the lifecycle.
+
+3. A developer needs to grant a partner temporary read access to a specific blob without sharing the account key or creating a new identity. What is the most secure approach?
+
+   **A)** Shared Access Signature (SAS) with account key  
+   **B)** User Delegation SAS backed by Entra ID credentials  
+   **C)** Stored access policy with full access  
+   **D)** Public blob container access  
+   > **Answer: B.** A User Delegation SAS is signed with Entra ID credentials, not the account key. It can be revoked by revoking the user's access without rotating the account key.
+
+4. A financial services company must ensure that critical Azure Blob data can be restored to any second within the last 30 days in case of accidental overwrite. Which combination of features enables this?
+
+   **A)** Soft delete + blob snapshots  
+   **B)** Blob versioning + point-in-time restore with change feed enabled  
+   **C)** GRS redundancy + lifecycle management  
+   **D)** Azure Backup for blobs with daily backup policy  
+   > **Answer: B.** Point-in-time restore combined with versioning and change feed enables container-level restore to any point within the configured retention period.
+
+5. A company running hybrid workloads needs their on-premises file server content to be cached locally while the primary copy is stored in Azure Files. Which service best supports this architecture?
+
+   **A)** Azure File Sync with cloud tiering enabled  
+   **B)** Azure Data Box for periodic sync  
+   **C)** Azure Blob Storage with AzCopy scheduled jobs  
+   **D)** SMB mount of Azure Files directly from on-premises  
+   > **Answer: A.** Azure File Sync with cloud tiering keeps frequently accessed files cached on the server endpoint while tiering infrequently accessed files to the cloud, freeing local disk space.

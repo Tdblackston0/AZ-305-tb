@@ -6,7 +6,7 @@
 
 ## 1. AZ-305 Exam Domain Overview
 
-- **Exam weight:** **10-15%**
+- **Exam weight:** **15-20%**
 - **What Microsoft tests:** backup strategy, disaster recovery design, high availability architecture, and how well you align technical choices to **RTO** and **RPO** targets.
 - **What the exam rewards:** choosing the **lowest-ops**, **most resilient**, **cost-aware**, and **business-aligned** continuity design rather than the most complex architecture.
 

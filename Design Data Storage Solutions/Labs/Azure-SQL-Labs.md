@@ -1,13 +1,25 @@
 # Azure SQL Hands-On Labs (AZ-305)
 
-> 📖 **Cheat Sheet:** [Azure SQL Cheat Sheet](../CheatSheets/Azure-SQL.md)
+> 📖 **Cheat Sheet:** [Azure SQL Cheat Sheet](../Azure-SQL.md)
 
 > **Prerequisites:** Azure CLI installed, active Azure subscription, appropriate RBAC permissions (Contributor+).  
 > **Cost Warning:** Some labs (especially Lab 7) incur significant charges. Always run cleanup commands when finished.
 
----
+## Exam Domain Mapping
 
-## Infrastructure as Code Starter Templates (Bicep & Terraform)
+- **Primary domain:** Design data storage solutions (20-25%)
+- **Secondary domains:** Design infrastructure solutions (30-35%), Design identity, governance, and monitoring solutions (25-30%)
+
+| Lab | Primary Skill Tested |
+|-----|---------------------|
+| Lab 1: Azure SQL Database | Service tier and purchasing model selection (vCore vs. DTU) |
+| Lab 2: Elastic Pool | Multi-tenant cost optimization with shared compute |
+| Lab 3: Hyperscale | Large-scale database design with named read replicas |
+| Lab 4: Geo-Replication & Failover Groups | Cross-region SQL availability and automatic failover design |
+| Lab 5: Security Configuration | Entra ID auth, TDE, Always Encrypted, and private endpoint |
+| Lab 6: Serverless Compute | Variable workload cost optimization with autopause |
+| Lab 7: SQL Managed Instance | Lift-and-shift with SQL Agent, CLR, cross-DB query design |
+| Lab 8: DMS Migration | Online migration to Azure SQL with near-zero downtime |
 
 Use these snippets to provision baseline SQL lab infrastructure before running step-by-step commands.
 
@@ -1500,3 +1512,47 @@ az group delete --name $RG --yes --no-wait
 5. **Hyperscale**: Cannot be moved to other tiers (one-way migration as of latest updates—check current docs).
 6. **Always Encrypted**: Client-side encryption; SQL Server never sees plaintext. Deterministic for equality searches, Randomized for no query support.
 7. **Backup storage redundancy**: Choose LRS/ZRS/GRS at creation; affects PITR and geo-restore capabilities.
+
+---
+
+## Exam-Style Review Questions
+
+1. A company needs a relational database for an OLTP workload with an SLA requirement of 99.995% and a secondary read replica in the same region at no extra cost. Which Azure SQL service tier meets both requirements?
+
+   **A)** General Purpose with active geo-replication  
+   **B)** Business Critical tier  
+   **C)** Hyperscale with one named replica  
+   **D)** Standard (DTU) tier  
+   > **Answer: B.** Business Critical includes a built-in read replica (free) and provides 99.995% SLA with Availability Zones. The free replica satisfies the secondary read requirement.
+
+2. A SaaS provider runs 50 single-tenant Azure SQL databases with highly variable load—most are idle at night and peak at different times during the day. What is the most cost-effective design?
+
+   **A)** 50 individual databases with reserved capacity  
+   **B)** One elastic pool with appropriate eDTU or vCore capacity  
+   **C)** 50 serverless databases  
+   **D)** One SQL Managed Instance  
+   > **Answer: B.** Elastic pools share compute capacity across databases with variable load, reducing cost when different tenants peak at different times. Serverless is better for individual unpredictable workloads, not a managed pool of tenants.
+
+3. A company is migrating from SQL Server on-premises and requires SQL Server Agent jobs, cross-database queries with four-part names, and linked server connectivity. Which Azure SQL service should they choose?
+
+   **A)** Azure SQL Database single database  
+   **B)** Azure SQL Database Hyperscale  
+   **C)** Azure SQL Managed Instance  
+   **D)** SQL Server in an Azure VM  
+   > **Answer: C.** SQL Managed Instance supports SQL Agent, cross-database queries, linked servers, CLR, and other near-full SQL Server feature parity that single databases do not provide.
+
+4. A startup needs a database that scales automatically from 0 to 8 vCores, pauses when idle to minimize cost, and resumes within 60–90 seconds when a connection arrives. Which Azure SQL tier should they select?
+
+   **A)** General Purpose provisioned  
+   **B)** Business Critical provisioned  
+   **C)** Serverless (vCore) with autopause enabled  
+   **D)** DTU Standard S2  
+   > **Answer: C.** Serverless compute tier with autopause is specifically designed for variable/intermittent workloads that benefit from automatic pausing and per-second billing.
+
+5. A team needs their Azure SQL Database to recover to any point within the last 35 days and also retain monthly backups for 10 years for regulatory compliance. What combination achieves this?
+
+   **A)** Standard PITR (35-day retention) only  
+   **B)** Standard PITR (35-day) + Long-Term Retention (LTR) policy  
+   **C)** Recovery Services Vault backup + 35-day retention  
+   **D)** Active geo-replication with 35-day retention  
+   > **Answer: B.** Azure SQL Database PITR (up to 35 days) covers operational recovery, while Long-Term Retention (LTR) stores weekly, monthly, or yearly full backups in Azure Blob Storage for up to 10 years.
